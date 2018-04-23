@@ -1,5 +1,5 @@
 %--------------------------------------------------------------------------
-% feat extracion code for faicial unit recognition 
+% feat extracion code for faicial unit recognition using Myo Expression DB
 %--------------------------------------------------------------------------
 % developed by Ho-Seung Cha, Ph.D Student,
 % CONE Lab, Biomedical Engineering Dept. Hanyang University
