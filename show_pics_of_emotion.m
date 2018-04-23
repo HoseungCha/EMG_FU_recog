@@ -26,7 +26,6 @@ path_Code = fileparts(cd);
 % path of DB of pics
 path_pic = fullfile(path_Code,'DB','DB_pic_lips');
 
-
 % read subject nams and path of that subejct
 [name_sub,path_sub] = read_names_of_file_in_folder(path_pic);
 
