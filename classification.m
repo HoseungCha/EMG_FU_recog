@@ -17,7 +17,6 @@ name_DB_raw = 'DB_raw2';
 % name of process DB to analyze in this code
 name_DB_process = 'DB_processed2';
 
-
 % load feature set, which was extracted by feat_extration.m
 name_DB_analy = 'feat_set_DB_raw2_n_sub_16_n_seg_30_n_wininc_204_winsize_204';
 % 
@@ -120,23 +119,10 @@ idx_trl = 1 : n_trl;
 name_gesture_clfr = cell(n_cf,1);
 name_gesture_clfr{1} = {'eye_brow_down','eye_brow_sad','neutral',...
     'eye_brow_sad','eye_brow_up'};
-name_gesture_clfr{2} = {'neutral','neutral'};
+name_gesture_clfr{2} = {'neutral','nose_wrinkle'};
 name_gesture_clfr{3} = {'lip_tighten','clench','lip_corner_up_left',...
     'lip_corner_up_right','lip_stretch_down',...
     'lip_corner_up_both','kiss','lip_open'};
-
-% name_gesture_list{1} = {'eye_brow_down','neutral','lip_tighten'};
-% name_gesture_list{2} = {'neutral','neutral','clench'};
-% name_gesture_list{3} = {'neutral','neutral','lip_corner_up_left'};
-% name_gesture_list{4} = {'neutral','neutral','contemptuous_right'};
-% name_gesture_list{5} = {'neutral','nose_wrinkle','lip_corner_up_both'};
-% name_gesture_list{6} = {'neutral','neutral','lip_corner_up_left'};
-% name_gesture_list{7} = {'neutral','neutral','lip_corner_up_left'};
-% name_gesture_list{8} = {'neutral','neutral','lip_corner_up_left'};
-% name_gesture_list{9} = {'neutral','neutral','lip_corner_up_left'};
-% name_gesture_list{10} = {'neutral','neutral','lip_corner_up_left'};
-% name_gesture_list{11} = {'neutral','neutral','lip_corner_up_left'};
-
 
 % feature indexing when using DB of ch4 ver
 idx_feat.RMS = 1:4;
@@ -173,6 +159,11 @@ idx_ch_FE2classfy{3} = idx_ch_zy;
 % idx_ch_FE2classfy{1} = 1:28;
 % idx_ch_FE2classfy{2} = 1:28;
 % idx_ch_FE2classfy{3} = 1:28;
+%============emg onset
+load(fullfile(path_DB_process,'model_tree_emg_onset.mat'));
+
+
+
 %-------------------------------------------------------------------------%
 
 %----------------------set saving folder----------------------------------%
@@ -422,24 +413,46 @@ for i_trl = 1 : n_trl
             for i_fe = 1 : n_FE
                 name_output_clfr = cell(n_cf,1);
                 for i_cf = 1 : n_cf
+                    for i_seg = 4 : n_seg
+                    % db
+                    tmp2 = tmp(1:i_seg,idx_ch_FE2classfy{i_cf},i_fe);
+                    
                     % test
-                    output_test = predict(r.model{i_trl,i_sub,n_t+1,i_emg_pair,i_cf},...
-                    tmp(:,idx_ch_FE2classfy{i_cf},i_fe));
-            
+                    output_test = predict(...
+                        r.model{i_trl,i_sub,n_t+1,i_emg_pair,i_cf},tmp2);
+                                            
+                    
+                    [label,score,cost]= predict(...
+                        r.model{i_trl,i_sub,n_t+1,i_emg_pair,i_cf},tmp2);
+                    % EMG onset detection of each channel
+                    tmp3 = tmp2(:,idx_ch_FE2classfy{i_cf}([1,8]));
+                    
+                    output_EMGonset = zeros(i_seg,2);
+                    for i_ch = 1 : 2
+                        output_EMGonset(1:i_seg,i_ch) = ...
+                            predict(model_tree_emg_onset,tmp3(:,i_ch));
+
+                    end
+
                     % reshape ouput_test as <seg, trl, FE>
                     output_mv_test = majority_vote(output_test,idx_FE2classfy{i_cf});
+                    
+                     % get only output which has EMG activation
+%                     output_mv_test(~any(output_EMGonset,2)) = NaN;
                     
                     % get output using number of segments you want
                     idx_output2clfr = ...
                         find(countmember(idx_FE2classfy{i_cf},output_mv_test(i_seg))==1);
                     name_output_clfr{i_cf} = name_gesture_clfr{i_cf}...
                         {idx_output2clfr};
+                    end
                 end
                  % composing avartar by classfied facial unit
                  plot_avartar(name_output_clfr{1},name_output_clfr{2},...
                      name_output_clfr{3})
                  title(name_FE{i_fe})
                  set(gcf,'Position',[1162 348 560 420]);
+                 
             end
         end
         %-----------------------------------------------------------------%
