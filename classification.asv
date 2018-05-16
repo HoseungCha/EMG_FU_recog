@@ -83,7 +83,7 @@ feat = getfield(tmp,tmp_name{1}); %#ok<GFLD>
 % trigger singals corresponding to each facial expression(emotion)
 name_trg = {"angry(eye brow wrinkled, lip tightening)",...
     1;"어금니깨물기(teeth clenching)",2;"비웃음(왼쪽)",3;"비웃음(오른쪽)",4;...
-    "찡그림(nose wrinkled)",5;"두려움(lip strecher)",...
+    "눈 세게 감기(nose wrinkled)",5;"두려움(lip strecher)",...
     6;"행복(lip corner)",7;"키스(lip kiss)",8;"무표정",9;"슬픔(lip protrude",...
     10;"놀람(eye brow up, lip open)",11};
 name_FE = name_trg(:,1);
@@ -107,7 +107,7 @@ end
 % kiss(8), surprise(open)(11)
 name_classifier = {'cf_eyebrow','cf_lipshapes'};
 n_cf = length(name_classifier);
-idx_FE2classfy = {[1,6,7,9,10,11],[1,2,3,4,6,7,8,11]};
+idx_FE2classfy = {[1,6,9,10,11],[1,2,3,4,6,7,8,11]};
 
 name_FE2classfy = cell(n_cf,1);
 for i_cf = 1 : n_cf
@@ -398,14 +398,14 @@ for i_trl = 1 : n_trl
         n_seg2use = 15;
         for i_trl_test = find(idx_trl~=i_trl)
             tmp = feat(:,:,:,i_trl_test,i_sub,i_emg_pair);
-            for i_fe = 1: n_FE
+            for i_fe = 3: n_FE
                 name_output_clfr = cell(n_cf,1);
                 output_test = cell(n_cf,1);
                 output_score = cell(n_cf,1);
                 output_score_avg = cell(n_cf,1);
                 ouput_score = zeros(n_cf,1);
                 ouput_mv = zeros(n_cf,1);
-                id_emg_onset = NaN(n_cf, 1);
+                id_emg_onset = false(n_cf, 1);
                 for i_cf = 1 : n_cf
                     % db
                     tmp_feat = tmp(1:n_seg2use,idx_ch_FE2classfy{i_cf},i_fe);
@@ -415,15 +415,15 @@ for i_trl = 1 : n_trl
 
                     % EMG onset detection
                     output_EMGonset = zeros(n_seg2use,2);
-                    id_emg_onset_chan = NaN(1,2);
+                    id_emg_onset_chan = 
                     for i_ch = 1 : 2
                         output_EMGonset(:,i_ch) = ...
                             predict(model_tree_emg_onset,tmp_RMS(:,i_ch));
                         [~,tmp_idx] = max(countmember(...
                             idx_emg_onest,output_EMGonset(:,i_ch) ));
-                        id_emg_onset_chan(i_ch) = idx_emg_onest(tmp_idx);
+                        id_emg_onset_chan = idx_emg_onest(tmp_idx);
                     end
-                    id_emg_onset(i_cf) = any(id_emg_onset_chan);
+                    id_emg_onset(i_cf)
                     % get emg onset if any channel has recognized EMG onset
                     disp(output_EMGonset)
                     % test
@@ -444,7 +444,7 @@ for i_trl = 1 : n_trl
                 % check emg onset
                 %-----------EYE-BROW EMG: ON LIP-BROW EMG: ON-------------%
                 if id_emg_onset(1) == 1 && id_emg_onset(2) == 1
-%                     if ouput_score(1) < ouput_score(2)
+                    if ouput_score(1) < ouput_score(2)
                         
                     % get possible eye brow expressions based on lip shapes
                     possible_eyebrows = ...
@@ -453,43 +453,41 @@ for i_trl = 1 : n_trl
                     % set eye brow within possible eye brow expression
                     ouput_mv(1) = get_output_within_possible_outcomes(...
                         possible_eyebrows,output_test{1});
-%                     else
-%                         
-%                     % get possible lip expressions based on eye-brow
+                    else
+                        
+                    % get possible lip expressions based on eye-brow
+                    possible_lips = ...
+                        natural_lip_exp_selctor(ouput_mv(1));
+                    
+                    % set lip expression within possible lip expressions
+                    ouput_mv(2) = get_output_within_possible_outcomes(...
+                        possible_lips,output_test{2});
+                    end
+                %---------------------------------------------------------%
+
+                %-----------EYE-BROW EMG: ON LIP-BROW EMG: OFF------------%
+                elseif id_emg_onset(1) == 1 && id_emg_onset(2) == 0
+                    % get possible lip expressions based on eye-brow
 %                     possible_lips = ...
 %                         natural_lip_exp_selctor(ouput_mv(1));
 %                     
 %                     % set lip expression within possible lip expressions
 %                     ouput_mv(2) = get_output_within_possible_outcomes(...
 %                         possible_lips,output_test{2});
-%                     end
-                %---------------------------------------------------------%
-
-                %-----------EYE-BROW EMG: ON LIP-BROW EMG: OFF------------%
-                elseif id_emg_onset(1) == 1 && id_emg_onset(2) == 0
-                    if ouput_mv(1) == 1 || ouput_mv(1) == 11
-                        % get possible lip expressions based on eye-brow
-                        possible_lips = ...
-                        natural_lip_exp_selctor(ouput_mv(1));
                     
-                        % set lip expression within possible lip expressions
-                        ouput_mv(2) = get_output_within_possible_outcomes(...
-                        possible_lips,output_test{2});
-                    else
-                        ouput_mv(2) = 9;
-                    end
+                                        ouput_mv(2) = 9;
                 %---------------------------------------------------------%
 
                 %-----------EYE-BROW EMG: OFF LIP-BROW EMG: ON------------%
                 elseif id_emg_onset(1) == 0 && id_emg_onset(2) == 1
-%                     ouput_mv(1) = 9;
-                    % get possible eye brow expressions based on lip shapes
-                    possible_eyebrows = ...
-                        natural_eye_brow_exp_selctor(ouput_mv(2));
-                    
-                    % set eye brow within possible eye brow expression
-                    ouput_mv(1) = get_output_within_possible_outcomes(...
-                        possible_eyebrows,output_test{1});
+                    ouput_mv(1) = 9;
+%                     % get possible eye brow expressions based on lip shapes
+%                     possible_eyebrows = ...
+%                         natural_eye_brow_exp_selctor(ouput_mv(2));
+%                     
+%                     % set eye brow within possible eye brow expression
+%                     ouput_mv(1) = get_output_within_possible_outcomes(...
+%                         possible_eyebrows,output_test{1});
                 %---------------------------------------------------------%
 
                 %-----------EYE-BROW EMG: OFF LIP-BROW EMG: OFF-----------%
@@ -507,7 +505,7 @@ for i_trl = 1 : n_trl
                 plot_avartar(name_output_clfr{1},'neutral',...
                     name_output_clfr{2})
                 title(name_FE{i_fe})
-                set(gcf,'Position',[1234 290 560 420]);
+                set(gcf,'Position',[2791 132 560 420]);
                 disp(id_emg_onset);
             end
         end
