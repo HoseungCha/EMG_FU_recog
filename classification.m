@@ -105,9 +105,9 @@ end
 % happy(7), 
 % lips : angry(lip tightening) (1), clench(2), fear(lip_stretch_down)(6)
 % kiss(8), surprise(open)(11)
-name_classifier = {'cf_eyebrow','cf_cheeck','cf_lipshapes'};
+name_classifier = {'cf_eyebrow','cf_lipshapes'};
 n_cf = length(name_classifier);
-idx_FE2classfy = {[1,6,9,10,11],[3,9],[1,2,3,4,6,7,8,11]};
+idx_FE2classfy = {[1,6,9,10,11],[1,2,3,4,6,7,8,11]};
 
 name_FE2classfy = cell(n_cf,1);
 for i_cf = 1 : n_cf
@@ -116,13 +116,12 @@ end
 idx_sub = 1 : n_sub;
 idx_trl = 1 : n_trl;
 
-name_gesture_clfr = cell(n_cf,1);
-name_gesture_clfr{1} = {'eye_brow_down','eye_brow_sad','neutral',...
-    'eye_brow_sad','eye_brow_up'};
-name_gesture_clfr{2} = {'neutral','nose_wrinkle'};
-name_gesture_clfr{3} = {'lip_tighten','clench','lip_corner_up_left',...
-    'lip_corner_up_right','lip_stretch_down',...
-    'lip_corner_up_both','kiss','lip_open'};
+name_gesture_clfr{1} = {'eye_brow_down','none','none','none','none','eye_brow_sad',...
+    'none', 'none','neutral','eye_brow_sad','eye_brow_up'};
+% name_gesture_clfr{2} = {'neutral','nose_wrinkle'};
+name_gesture_clfr{2} = {'lip_tighten','clench','lip_corner_up_left',...
+    'lip_corner_up_right','none', 'lip_stretch_down',...
+    'lip_corner_up_both','kiss','none', 'none','lip_open'};
 
 % feature indexing when using DB of ch4 ver
 idx_feat.RMS = 1:4;
@@ -154,7 +153,6 @@ idx_ch_fr = cat(2,idx_ch{idx_Fr});
 % {'cf_eyebrow','cf_cheeck','cf_lipshapes'};
 idx_ch_FE2classfy{1} = idx_ch_fr;
 idx_ch_FE2classfy{2} = idx_ch_zy;
-idx_ch_FE2classfy{3} = idx_ch_zy;
 
 % idx_ch_FE2classfy{1} = 1:28;
 % idx_ch_FE2classfy{2} = 1:28;
@@ -407,54 +405,155 @@ for i_trl = 1 : n_trl
         
         %------------------------make avartar-----------------------------%
         % get input and targets for test DB
-        i_seg = 15;
+        n_seg2use = 15;
         for i_trl_test = find(idx_trl~=i_trl)
             tmp = feat(:,:,:,i_trl_test,i_sub,i_emg_pair);
             for i_fe = 1 : n_FE
                 name_output_clfr = cell(n_cf,1);
+                output_test = cell(n_cf,1);
+                output_score = cell(n_cf,1);
+                output_score_avg = cell(n_cf,1);
+                ouput_score = zeros(n_cf,1);
+                ouput_mv = zeros(n_cf,1);
+                id_emg_onset = false(n_cf, 1);
                 for i_cf = 1 : n_cf
-                    for i_seg = 4 : n_seg
                     % db
-                    tmp2 = tmp(1:i_seg,idx_ch_FE2classfy{i_cf},i_fe);
+                    tmp_feat = tmp(1:n_seg2use,idx_ch_FE2classfy{i_cf},i_fe);
+                    
+                    % get only RMS of channels for EMG onset detection
+                    tmp_RMS = tmp_feat(n_seg2use,[1,8]);
+                    
+                    % EMG onset detection
+                    output_EMGonset = zeros(1,2);
+                    for i_ch = 1 : 2
+                        output_EMGonset(1,i_ch) = ...
+                            predict(model_tree_emg_onset,tmp_RMS(i_ch));
+                    end       
+                    % get emg onset if any channel has recognized EMG onset
+                    id_emg_onset(i_cf) = any(output_EMGonset);
                     
                     % test
-                    output_test = predict(...
-                        r.model{i_trl,i_sub,n_t+1,i_emg_pair,i_cf},tmp2);
-                                            
+                    [output_test{i_cf},output_score{i_cf},~] = ...
+                        predict(...
+                        r.model{i_trl,i_sub,n_t+1,i_emg_pair,i_cf},...
+                        tmp_feat);
                     
-                    [label,score,cost]= predict(...
-                        r.model{i_trl,i_sub,n_t+1,i_emg_pair,i_cf},tmp2);
-                    % EMG onset detection of each channel
-                    tmp3 = tmp2(:,idx_ch_FE2classfy{i_cf}([1,8]));
-                    
-                    output_EMGonset = zeros(i_seg,2);
-                    for i_ch = 1 : 2
-                        output_EMGonset(1:i_seg,i_ch) = ...
-                            predict(model_tree_emg_onset,tmp3(:,i_ch));
-
-                    end
-
-                    % reshape ouput_test as <seg, trl, FE>
-                    output_mv_test = majority_vote(output_test,idx_FE2classfy{i_cf});
-                    
-                     % get only output which has EMG activation
-%                     output_mv_test(~any(output_EMGonset,2)) = NaN;
-                    
-                    % get output using number of segments you want
-                    idx_output2clfr = ...
-                        find(countmember(idx_FE2classfy{i_cf},output_mv_test(i_seg))==1);
-                    name_output_clfr{i_cf} = name_gesture_clfr{i_cf}...
-                        {idx_output2clfr};
-                    end
+                    % average of output score for classification and
+                    % setting reference facial unit
+                    output_score_avg{i_cf}= mean(output_score{i_cf});
+                    [ouput_score(i_cf), tmp_idx] =...
+                        max(output_score_avg{i_cf});
+                    ouput_mv(i_cf) = idx_FE2classfy{i_cf}(tmp_idx);
                 end
+                
+                % decide refernce facial expression by output score
+                % facial expression in other facial part
+                
+                
+%                 if ouput_score(1) >= ouput_score(2)
+%                     % if p.p. of eye-brow was highly classfied, decice possible
+%                     % outcomes of lip expression
+%                     switch ouput_mv(1)
+%                         case 1
+%                             possible_outcome = [1,2,11];
+%                         case 6
+%                             possible_outcome = [1,2,7,11];
+%                         case 9
+%                             possible_outcome = idx_FE2classfy{2};
+%                         case 10
+%                             possible_outcome = [1,2,7,11];
+%                         case 11
+%                             possible_outcome = [1,11];
+%                     end
+%                     
+%                     % counts outputs within possible outcomes
+%                     outcome_counts = ...
+%                         countmember(possible_outcome,output_test{2});
+%                     
+%                     % check if there is no outputs in the 
+%                     % desired ouputs(possible)
+%                     if any(outcome_counts)
+%                         %
+%                         [~, idx_2_classfication] = max(outcome_counts);
+% 
+%                         idx_2_classfication = possible_outcome(idx_2_classfication);
+% 
+%                         % check multiple ouputs
+%                         [bincounts,idx] = histc(outcome_counts,unique(outcome_counts));
+%                         counts_outcome = bincounts(idx);
+% 
+%                         % check if label which give multiple outputs was the label
+%                         % which gives max counts(classified label)
+%                         if any(countmember(possible_outcome(counts_outcome>1),idx_2_classfication))
+%                            keyboard; 
+%                         end
+%                         output_final = idx_2_classfication;
+%                     else 
+%                         output_final = possible_outcome(randi(3));
+%                     end
+%                     name_output_clfr{1} = name_gesture_clfr{1}{ouput_mv(1)};
+%                     name_output_clfr{2} = name_gesture_clfr{2}{output_final};
+%                     
+%                 else
+                    % if p.p. of lip was highly classfied, decice possible
+                    % outcomes of eye brow expression
+                    switch ouput_mv(2)
+                        case 1
+                            possible_outcome = [1,6,9,10,11];
+                        case 2
+                            possible_outcome = [1,6,9,10];
+                        case 3
+                            possible_outcome = 9;
+                        case 4
+                            possible_outcome = 9;
+                        case 6
+                            possible_outcome = [6,9,10];
+                        case 7
+                            possible_outcome = [6,9,10];
+                        case 8
+                            possible_outcome = 9;
+                        case 11
+                            possible_outcome = [1,6,9,10,11];
+                    end
+                    % counts outputs within possible outcomes
+                    outcome_counts = ...
+                        countmember(possible_outcome,output_test{1});
+                     % check if there is no outputs in the 
+                    % desired ouputs(possible)
+                    if any(outcome_counts)
+                        %
+                        [~, idx_2_classfication] = max(outcome_counts);
+
+                        idx_2_classfication = possible_outcome(idx_2_classfication);
+
+                        % check multiple ouputs
+                        [bincounts,idx] = histc(outcome_counts,unique(outcome_counts));
+                        counts_outcome = bincounts(idx);
+
+                        % check if label which give multiple outputs was the label
+                        % which gives max counts(classified label)
+                        if any(countmember(possible_outcome(counts_outcome>1),idx_2_classfication))
+                           output_final = possible_outcome(counts_outcome>1);
+                           output_final = output_final(randi(length(output_final)));
+                        else
+                            output_final = idx_2_classfication;
+                        end
+                    else 
+                        output_final = possible_outcome(randi(length(possible_outcome)));
+                    end
+                    
+                    % get classified expression of each facial units
+                    name_output_clfr{1} = name_gesture_clfr{1}{output_final};
+                    name_output_clfr{2} = name_gesture_clfr{2}{ouput_mv(2)};
+%                 end
+            
                  % composing avartar by classfied facial unit
-                 plot_avartar(name_output_clfr{1},name_output_clfr{2},...
-                     name_output_clfr{3})
+                 plot_avartar(name_output_clfr{1},'neutral',...
+                     name_output_clfr{2})
                  title(name_FE{i_fe})
-                 set(gcf,'Position',[1162 348 560 420]);
-                 
-            end
-        end
+                 set(gcf,'Position',[2791 132 560 420]);
+             end
+         end
         %-----------------------------------------------------------------%
     end
 end
