@@ -18,7 +18,7 @@ name_DB_raw = 'DB_raw2';
 name_DB_process = 'DB_processed2';
 
 % load feature set, which was extracted by feat_extration.m
-name_DB_analy = 'feat_set_DB_raw2_n_sub_16_n_seg_30_n_wininc_204_winsize_204';
+name_DB_analy = 'feat_set_DB_raw2_n_sub_39_n_seg_30_n_wininc_204_winsize_204';
 %
 % % load feature set, from different DB, which was extracted by
 % % feat_extraion.m in git_EMG_train_less_FE_recog
@@ -63,7 +63,7 @@ addpath(genpath(fullfile(cd,'functions')));
 
 %-----------------------------load DB-------------------------------------%
 % load feature set, from this experiment
-tmp = load(fullfile(path_DB_process,name_DB_analy,'feat_set'));
+tmp = load(fullfile(path_DB_process,name_DB_analy,'feat_set_pair_1'));
 tmp_name = fieldnames(tmp);
 feat = getfield(tmp,tmp_name{1}); %#ok<GFLD>
 
@@ -405,7 +405,7 @@ for i_trl = 1 : n_trl
                 output_score_avg = cell(n_cf,1);
                 ouput_score = zeros(n_cf,1);
                 ouput_mv = zeros(n_cf,1);
-                id_emg_onset = NaN(n_cf, 1);
+                id_emg_onset_final = NaN(n_cf, 1);
                 for i_cf = 1 : n_cf
                     % db
                     tmp_feat = tmp(1:n_seg2use,idx_ch_FE2classfy{i_cf},i_fe);
@@ -423,7 +423,7 @@ for i_trl = 1 : n_trl
                             idx_emg_onest,output_EMGonset(:,i_ch) ));
                         id_emg_onset_chan(i_ch) = idx_emg_onest(tmp_idx);
                     end
-                    id_emg_onset(i_cf) = any(id_emg_onset_chan);
+                    id_emg_onset_final(i_cf) = any(id_emg_onset_chan);
                     % get emg onset if any channel has recognized EMG onset
                     disp(output_EMGonset)
                     % test
@@ -443,7 +443,7 @@ for i_trl = 1 : n_trl
                 
                 % check emg onset
                 %-----------EYE-BROW EMG: ON LIP-BROW EMG: ON-------------%
-                if id_emg_onset(1) == 1 && id_emg_onset(2) == 1
+                if id_emg_onset_final(1) == 1 && id_emg_onset_final(2) == 1
 %                     if ouput_score(1) < ouput_score(2)
                         
                     % get possible eye brow expressions based on lip shapes
@@ -466,7 +466,7 @@ for i_trl = 1 : n_trl
                 %---------------------------------------------------------%
 
                 %-----------EYE-BROW EMG: ON LIP-BROW EMG: OFF------------%
-                elseif id_emg_onset(1) == 1 && id_emg_onset(2) == 0
+                elseif id_emg_onset_final(1) == 1 && id_emg_onset_final(2) == 0
                     if ouput_mv(1) == 1 || ouput_mv(1) == 11
                         % get possible lip expressions based on eye-brow
                         possible_lips = ...
@@ -481,7 +481,7 @@ for i_trl = 1 : n_trl
                 %---------------------------------------------------------%
 
                 %-----------EYE-BROW EMG: OFF LIP-BROW EMG: ON------------%
-                elseif id_emg_onset(1) == 0 && id_emg_onset(2) == 1
+                elseif id_emg_onset_final(1) == 0 && id_emg_onset_final(2) == 1
 %                     ouput_mv(1) = 9;
                     % get possible eye brow expressions based on lip shapes
                     possible_eyebrows = ...
@@ -493,7 +493,7 @@ for i_trl = 1 : n_trl
                 %---------------------------------------------------------%
 
                 %-----------EYE-BROW EMG: OFF LIP-BROW EMG: OFF-----------%
-                elseif id_emg_onset(1) == 0 && id_emg_onset(2) == 0
+                elseif id_emg_onset_final(1) == 0 && id_emg_onset_final(2) == 0
                     ouput_mv(1) = 9;
                     ouput_mv(2) = 9;
                 end
@@ -508,7 +508,7 @@ for i_trl = 1 : n_trl
                     name_output_clfr{2})
                 title(name_FE{i_fe})
                 set(gcf,'Position',[1234 290 560 420]);
-                disp(id_emg_onset);
+                disp(id_emg_onset_final);
             end
         end
         %-----------------------------------------------------------------%

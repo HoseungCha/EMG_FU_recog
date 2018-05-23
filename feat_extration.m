@@ -36,11 +36,12 @@ addpath(genpath(fullfile(cd,'functions')));
 % trigger singals corresponding to each facial expression(emotion)
 name_trg = {"화남",1;"어금니깨물기",2;"비웃음(왼쪽)",3;"비웃음(오른쪽)",4;...
     "눈 세게 감기",5;"두려움",6;"행복",7;"키스",8;"무표정",9;"슬픔",10;"놀람",11};
+
 name_FE = name_trg(:,1);
 idx_trg = cell2mat(name_trg(:,2));
 clear Name_Trg;
 n_fe = length(name_FE);% Number of facial expression
-n_trl = 10; % Number of Trials
+n_trl = 20; % Number of Trials
 %-------------------------------------------------------------------------%
 
 %----------------------------paramters------------------------------------%
@@ -58,7 +59,7 @@ n_sub= length(name_sub);
 
 % experiments or feat extractions parameters
 n_feat = 28;
-n_comb = 3;
+n_emg_pair = 3;
 n_ch = 4;
 idx_pair_right = [1,2;1,3;2,3]; %% 오른쪽 전극 조합
 idx_pair_left = [10,9;10,8;9,8]; %% 왼쪽 전극 조합
@@ -82,49 +83,49 @@ path_save = make_path_n_retrun_the_path(fullfile(path_DB_process),...
 
 
 % memory alloation
-features = zeros(n_seg,n_feat,n_fe,n_trl,n_sub,n_comb);
+features = NaN(n_seg,n_feat,n_fe,n_trl,n_sub);
 
-for i_comb = 1 : n_comb
+for i_emg_pair = 1 : n_emg_pair
 for i_sub= 1 : n_sub
-    %subject name
-    tmp_name_sub = name_sub{i_sub}(end-2:end); 
-    
     % read BDF
     [~,path_file] = read_names_of_file_in_folder(path_sub{i_sub},'*bdf');
-   
+    n_trl_curr = length(path_file);
     % for saving feature Set (processed DB)
-    count_i_trl = 0;
-    for i_trl = 1:n_trl
-%     for i_trl = 1
-        count_i_trl = count_i_trl + 1;
+    for i_trl = 1 : n_trl
+        if n_trl_curr<i_trl
+           continue; 
+        end    
+        fprintf('i_emg_pair-%d i_sub-%d i-trl-%d\n',i_emg_pair,i_sub,i_trl);
+        
+        % get bdf file
         out = pop_biosig(path_file{i_trl});
         
-       % load trigger when subject put on a look of facial expressoins
-        %Trigger latency 및 FE 라벨
-        temp = cell2mat(permute(struct2cell(out.event),[1 3 2]))';
-        if ~isempty(find(temp(:,1)==16385, 1)) || ...
-                ~isempty(find(temp(:,1)==16384, 1))
-            temp(temp(:,1)==16384,:) = [];
-            temp(temp(:,1)==16385,:) = [];
-        end
-        idx2use_fe = zeros(n_fe,1);
-        for i_fe = 1 : n_fe
-            tmp_fe = find(temp(:,1)==i_fe);
-            idx2use_fe(i_fe) = tmp_fe(2);
-        end
-        [~,idx_seq_FE] = sort(idx2use_fe);
-        lat_trg = temp(idx2use_fe,2);
-        lat_trg = lat_trg(idx_seq_FE);
+        % load trigger
+        tmp_trg = cell2mat(permute(struct2cell(out.event),[1 3 2]))';
         
-        clear temp tmp_fe idx2use_fe
+        % check which DB type you are working on
+        % total number of trigger 33: Myoexpression1
+        % total number of trigger 23: Myoexpression2
+        
+        switch length(tmp_trg)
+            case 33
+                [lat_trg,idx_seq_FE] = get_trg_myoexp1(tmp_trg);
+            case 23
+                [lat_trg,idx_seq_FE] = get_trg_myoexp2(tmp_trg);
+            otherwise
+                continue; 
+        end
+        
+        
+       
         % get raw data and bipolar configuration
 %         raw_data = double(OUT.data'); % raw data
 %         temp_chan = cell(1,6);
         % get raw data and bipolar configuration        
-        data_bip.RZ= out.data(idx_pair_right(i_comb,1),:) - out.data(idx_pair_right(i_comb,2),:);%Right_Zygomaticus
+        data_bip.RZ= out.data(idx_pair_right(i_emg_pair,1),:) - out.data(idx_pair_right(i_emg_pair,2),:);%Right_Zygomaticus
         data_bip.RF= out.data(4,:) - out.data(5,:); %Right_Frontalis
         data_bip.LF= out.data(6,:) - out.data(7,:); %Left_Corrugator
-        data_bip.LZ= out.data(idx_pair_left(i_comb,1),:) - out.data(idx_pair_left(i_comb,2),:); %Right_Zygomaticus
+        data_bip.LZ= out.data(idx_pair_left(i_emg_pair,1),:) - out.data(idx_pair_left(i_emg_pair,2),:); %Left_Zygomaticus
         data_bip = double(cell2mat(struct2cell(data_bip)))';
         clear out;
         % Filtering
@@ -163,36 +164,77 @@ for i_sub= 1 : n_sub
         
         % To confirm the informaion of trrigers were collected right
         hf =figure(i_sub);
-        hf.Position = [-2585 -1114 1920 1091];
+        hf.Position = [1921 41 1920 962];
         subplot(n_trl,1,i_trl);
-        plot(temp_feat(1:end,1:4));
+        tmp_plot = temp_feat(1:end,1:4);
+        plot(tmp_plot)
+        v_min = min(min(tmp_plot(100:end,:)));
+        v_max = max(max(tmp_plot(100:end,:)));
         hold on;
-        stem(idx_trg_start,repmat(100,[n_fe,1]));
-        ylim([1 300]);
+        stem(idx_trg_start,repmat(v_min,[n_fe,1]),'k');
+        stem(idx_trg_start,repmat(v_max,[n_fe,1]),'k');
+        ylim([v_min v_max]);
         drawnow;
         
        % Get Feature sets(preprocessed DB)
        % [n_seg,n_feat,n_fe,n_trl,n_sub,n_comb]
-        temp = [];
+%         temp = [];
         for i_emo_orer_in_this_exp = 1 : n_fe
-            features(:,:,idx_seq_FE(i_emo_orer_in_this_exp),count_i_trl,i_sub,i_comb) = ...
+            features(:,:,idx_seq_FE(i_emo_orer_in_this_exp),i_trl,i_sub) = ...
                         temp_feat(idx_trg_start(i_emo_orer_in_this_exp):...
                         idx_trg_start(i_emo_orer_in_this_exp)+floor((period_FE*fp.SF2use)/n_wininc)-1 ,:);
                     
-            temp = [temp;temp_feat(idx_trg_start(i_emo_orer_in_this_exp):...
-                        idx_trg_start(i_emo_orer_in_this_exp)+floor((period_FE*fp.SF2use)/n_wininc)-1 ,:)];
+%             temp = [temp;temp_feat(idx_trg_start(i_emo_orer_in_this_exp):...
+%                         idx_trg_start(i_emo_orer_in_this_exp)+floor((period_FE*fp.SF2use)/n_wininc)-1 ,:)];
         end 
     end  
     % plot the DB 
     c = getframe(hf);
-    imwrite(c.cdata,fullfile(path_save,[tmp_name_sub(1:3),'.jpg']));
+    savefig(hf,fullfile(path_save,[name_sub{i_sub},'.fig']));
+    imwrite(c.cdata,fullfile(path_save,[name_sub{i_sub},'.png']));
     close(hf);
 end
+    % 결과 저장
+    save(fullfile(path_save,['feat_set_pair_',num2str(i_emg_pair)]),'features');
 end
 
-% 결과 저장
-save(fullfile(path_save,'feat_set'),'features');
 
 
 
+%==========================FUNCTIONS======================================%
+function [lat_trg,idx_seq_FE] = get_trg_myoexp1(trg)
+%Trigger latency 및 FE 라벨
+if ~isempty(find(trg(:,1)==16385, 1)) || ...
+        ~isempty(find(trg(:,1)==16384, 1))
+    trg(trg(:,1)==16384,:) = [];
+    trg(trg(:,1)==16385,:) = [];
+end
 
+idx_seq_FE = trg(2:3:33,1);
+lat_trg = trg(2:3:33,2);
+
+% idx2use_fe = zeros(11,1);
+% for i_fe = 1 : 11
+%     tmp_fe = find(trg_cell(:,1)==i_fe);
+%     idx2use_fe(i_fe) = tmp_fe(2);
+% end
+% [~,idx_seq_FE] = sort(idx2use_fe);
+% lat_trg = trg_cell(idx2use_fe,2);
+% lat_trg = lat_trg(idx_seq_FE);
+end
+
+function [lat_trg,idx_seq_FE] = get_trg_myoexp2(trg)
+% get trigger latency when marker DB acquasition has started
+lat_trg_onset = trg(1,2);
+
+% check which triger is correspoing to each FE and get latency
+tmp_emg_trg = trg(2:end,:);
+Idx_trg_obtained = reshape(tmp_emg_trg(:,1),[2,size(tmp_emg_trg,1)/2])';
+tmp_emg_trg = reshape(tmp_emg_trg(:,2),[2,size(tmp_emg_trg,1)/2])';
+lat_trg = tmp_emg_trg(:,1);
+
+% get sequnece of facial expression in this trial
+[~,idx_in_order] = sortrows(Idx_trg_obtained);    
+tmp_emg_trg = sortrows([idx_in_order,(1:length(idx_in_order))'],1); 
+idx_seq_FE = tmp_emg_trg(:,2); 
+end
