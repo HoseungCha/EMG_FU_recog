@@ -139,6 +139,16 @@ switch id_eyebrow
             [ypos_wrinkle_forehead,ypos_wrinkle_forehead],'k');
         plot([-1*size_wrinkle/2,size_wrinkle/2],...
             [ypos_wrinkle_forehead+0.04,ypos_wrinkle_forehead+0.04],'k')
+        
+    case 'eye_brow_happy' % Eye brow up
+        xq = xpos_left_eyebrow-size_eyebrow_width/2:0.01:xpos_left_eyebrow+size_eyebrow_width/2;
+
+        pos_eye_brow_up = interp1([xq(1), mean(xq), xq(end)],...
+        [ypos_eye_brow-0.05,ypos_eye_brow+0.05,ypos_eye_brow-0.05],xq,'spline');
+       
+        plot(xq,pos_eye_brow_up,'k')
+        plot(sort(abs(xq)),pos_eye_brow_up,'k')
+        
     case 'eye_brow_down' % Eye brow(frown)
         tmp1 = [xpos_left_eyebrow-size_eyebrow_width/2,xpos_left_eyebrow+size_eyebrow_width/2];
         tmp2 = [ypos_eye_brow_up,ypos_eye_brow];
@@ -170,20 +180,20 @@ switch id_eyebrow
 end
 %-------------------------------------------------------------------------%
 
-%------------------------ZYGOMATIC MUSCLE CONTROL-------------------------%
-switch id_zygo
-    case 'neutral' % NEUTRAL
-        % NOTHING
-    case 'nose_wrinkle' % NOSE WRINKLE
-        % wrinkles of nose
-        ypos_wrinkle_forehead = 0;
-        size_wrinkle = 0.1;
-        plot([-1*size_wrinkle/2,size_wrinkle/2],...
-            [ypos_wrinkle_forehead,ypos_wrinkle_forehead],'k');
-        plot([-1*size_wrinkle/2,size_wrinkle/2],...
-            [ypos_wrinkle_forehead+0.04,ypos_wrinkle_forehead+0.04],'k')
-end
-%-------------------------------------------------------------------------%
+% %------------------------ZYGOMATIC MUSCLE CONTROL-------------------------%
+% switch id_zygo
+%     case 'neutral' % NEUTRAL
+%         % NOTHING
+%     case 'nose_wrinkle' % NOSE WRINKLE
+%         % wrinkles of nose
+%         ypos_wrinkle_forehead = 0;
+%         size_wrinkle = 0.1;
+%         plot([-1*size_wrinkle/2,size_wrinkle/2],...
+%             [ypos_wrinkle_forehead,ypos_wrinkle_forehead],'k');
+%         plot([-1*size_wrinkle/2,size_wrinkle/2],...
+%             [ypos_wrinkle_forehead+0.04,ypos_wrinkle_forehead+0.04],'k')
+% end
+% %-------------------------------------------------------------------------%
 
 %---------------------------LIP SHAPES CONTROL----------------------------%
 ypos_lip = -0.6;
@@ -220,6 +230,24 @@ switch id_lips
             fliplr(ypos_both_lip_corner_up),xq,'spline');
         plot(xq,pos_right_lip_corner_up,'k')
         
+    case 'lip_happy' % LIP CORNER UP (BOTH)
+        % both lip corner up
+        ypos_both_lip_corner_up = [ypos_lip_corner_up,...
+            ypos_lip+0.1,ypos_lip_corner_up];
+
+        pos_right_lip_corner_up = interp1([xq(1),mean(xq),xq(end)],...
+            fliplr(ypos_both_lip_corner_up),xq,'spline');
+        
+        plot(xq,pos_right_lip_corner_up,'k')
+        
+        ypos_both_lip_corner_up = [ypos_lip_corner_up,...
+            ypos_lip-0.1,ypos_lip_corner_up];
+
+        pos_right_lip_corner_up = interp1([xq(1),mean(xq),xq(end)],...
+            fliplr(ypos_both_lip_corner_up),xq,'spline');
+        
+        plot(xq,pos_right_lip_corner_up,'k')
+        
     case 'clench' % CLENCH
         
         plot([-1*size_lip_width/2,size_lip_width/2],...
@@ -240,23 +268,33 @@ switch id_lips
  
     
     case 'lip_stretch_down' % LIP STRETCH DOWNWARD
-        diff = 0.1;
+        % both lip corner up
+        ypos_both_lip_corner_up = [ypos_lip-0.05,...
+            ypos_lip+0.05,ypos_lip-0.05];
 
-        plot([-1*size_lip_width/2+diff,size_lip_width/2-diff],...
-        [ypos_lip_corner_up + size_lip_height/2,...
-        ypos_lip_corner_up + size_lip_height/2],'k');
-    
-        plot([-1*size_lip_width/2,size_lip_width/2],...
-        [ypos_lip_corner_up - size_lip_height/2,...
-        ypos_lip_corner_up - size_lip_height/2],'k');
+        pos_right_lip_corner_up = interp1([xq(1),mean(xq),xq(end)],...
+            fliplr(ypos_both_lip_corner_up),xq,'spline');
+        plot(xq,pos_right_lip_corner_up,'k') 
+        
+    case 'lip_sulky' % 
+        % both lip corner up
+        ypos_both_lip_corner_up = [ypos_lip-0.05,...
+            ypos_lip+0.05,ypos_lip-0.05];
 
-        plot([-1*size_lip_width/2+diff,-1*size_lip_width/2],...
-        [ypos_lip_corner_up + size_lip_height/2,...
-        ypos_lip_corner_up - size_lip_height/2],'k');
+        pos_right_lip_corner_up = interp1([xq(1),mean(xq),xq(end)],...
+            fliplr(ypos_both_lip_corner_up),xq,'spline');
+        plot(xq(1:24),pos_right_lip_corner_up(1:24),'k')
+        
+        xpos_lip = [xq(20)+0.05,...
+            xq(24),xq(20)+0.05];
+        
+        yq = ypos_lip-1*size_lip_height/2:0.01:ypos_lip+size_lip_height/2+0.05;
 
-        plot([size_lip_width/2-diff,size_lip_width/2],...
-        [ypos_lip_corner_up + size_lip_height/2,...
-        ypos_lip_corner_up - size_lip_height/2],'k'); 
+%         pos_lip_vertical = interp1(xpos_lip,...
+%             [yq(end),mean(yq),yq(1)],yq,'spline');
+%         plot(pos_lip_vertical,yq,'k')
+        plot(xpos_lip,[yq(1),mean(yq),yq(end)],'k')
+        
     
     case 'kiss' % KISS
         % draw face
@@ -282,12 +320,6 @@ switch id_lips
     
         plot([pos_2_draw_vertical(1),pos_2_draw_vertical(2)],...
         [ypos_lip-size_wrinkle/2,ypos_lip-size_wrinkle/2],'k');
-    
-%         plot([pos_2_draw_vertical(1),pos_2_draw_vertical(2)],...
-%         [ypos_lip+size_wrinkle,ypos_lip+size_wrinkle],'k');
-%     
-%         plot([pos_2_draw_vertical(1),pos_2_draw_vertical(2)],...
-%         [ypos_lip+size_wrinkle/2,ypos_lip+size_wrinkle/2],'k');
     
 end
 %-------------------------------------------------------------------------%
