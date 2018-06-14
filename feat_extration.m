@@ -11,8 +11,8 @@ clc; clear all; close all;
 
 %------------------------code analysis parameter--------------------------%
 % decide the raw DB to analyse
-name_DB_raw = 'DB_raw2';
-name_DB_process = 'DB_processed2';
+name_DB_raw = 'DB_raw3';
+name_DB_process = 'DB_processed3';
 
 % decide number of segments in 3-sec long EMG data
 period_wininc = 0.1; % s
@@ -34,14 +34,30 @@ addpath(genpath(fullfile(cd,'functions')));
 
 %------------------------experiment infromation---------------------------%
 % trigger singals corresponding to each facial expression(emotion)
-name_trg = {"화남",1;"어금니깨물기",2;"비웃음(왼쪽)",3;"비웃음(오른쪽)",4;...
-    "눈 세게 감기",5;"두려움",6;"행복",7;"키스",8;"무표정",9;"슬픔",10;"놀람",11};
-
-name_FE = name_trg(:,1);
+name_fe = {'neutral-neutral'
+'eye_brow_down-lip_open'
+'eye_brow_down-lip_stretch_down'
+'eye_brow_down-lip_sulky'
+'eye_brow_down-lip_tighten'
+'eye_brow_down-neutral'
+'eye_brow_happy-lip_happy'
+'eye_brow_sad-lip_open'
+'eye_brow_sad-lip_stretch_down'
+'eye_brow_sad-lip_sulky'
+'eye_brow_sad-lip_tighten'
+'eye_brow_sad-neutral'
+'eye_brow_up-lip_open'
+'eye_brow_up-neutral'
+'neutral-lip_happy'
+'neutral-lip_open'
+'neutral-lip_stretch_down'
+'neutral-lip_sulky'
+'neutral-lip_tighten'
+};
 idx_trg = cell2mat(name_trg(:,2));
 clear Name_Trg;
-n_fe = length(name_FE);% Number of facial expression
-n_trl = 20; % Number of Trials
+n_fe = length(name_fe);% Number of facial expression
+n_trl = 10; % Number of Trials
 %-------------------------------------------------------------------------%
 
 %----------------------------paramters------------------------------------%
