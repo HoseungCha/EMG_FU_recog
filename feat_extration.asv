@@ -97,7 +97,7 @@ path_save = make_path_n_retrun_the_path(fullfile(path_DB_process),...
 
 
 % memory alloation
-features = NaN(n_seg,n_feat,n_fe,n_trl,n_sub,n_emg_pair);
+features = NaN(n_seg,n_feat,n_fe,n_trl,n_sub);
 
 for i_emg_pair = 1 : n_emg_pair
 for i_sub= 1 : n_sub
@@ -118,7 +118,7 @@ for i_sub= 1 : n_sub
         tmp_trg = cell2mat(permute(struct2cell(out.event),[1 3 2]))';
         
         % get latnecy of each trigger
-        [lat_trg,idx_seq_fe] = get_trg(tmp_trg);
+        [lat_trg,idx_seq_FE] = get_trg(tmp_trg);
        
         % get raw data and bipolar configuration        
         data_bip.RZ= out.data(idx_pair_right(i_emg_pair,1),:) - out.data(idx_pair_right(i_emg_pair,2),:);%Right_Zygomaticus
@@ -177,7 +177,7 @@ for i_sub= 1 : n_sub
        % [n_seg,n_feat,n_fe,n_trl,n_sub,n_comb]
 %         temp = [];
         for i_emo_orer_in_this_exp = 1 : n_fe
-            features(:,:,idx_seq_fe(i_emo_orer_in_this_exp),i_trl,i_sub,i_emg_pair) = ...
+            features(:,:,idx_seq_FE(i_emo_orer_in_this_exp),i_trl,i_sub) = ...
                         temp_feat(idx_trg_start(i_emo_orer_in_this_exp):...
                         idx_trg_start(i_emo_orer_in_this_exp)+floor((period_FE*fp.SF2use)/n_wininc)-1 ,:);
                     
@@ -191,15 +191,15 @@ for i_sub= 1 : n_sub
     imwrite(c.cdata,fullfile(path_save,[name_sub{i_sub},'.png']));
     close(hf);
 end
-
+    % 결과 저장
+    save(fullfile(path_save,['feat_set_pair_',num2str(i_emg_pair)]),'features');
 end
-% 결과 저장
-save(fullfile(path_save,['feat_seg.mat']),'features');
+
 
 
 
 %==========================FUNCTIONS======================================%
-function [lat_trg,idx_seq_fe] = get_trg(trg)
+function [lat_trg,idx_seq_FE] = get_trg(trg)
 Idx_trg_obtained = reshape(trg(:,1),[2,size(trg,1)/2])';
 trg = reshape(trg(:,2),[2,size(trg,1)/2])';
 lat_trg = trg(:,1);
@@ -207,5 +207,5 @@ lat_trg = trg(:,1);
 % get sequnece of facial expression in this trial
 [~,idx_in_order] = sortrows(Idx_trg_obtained);    
 trg = sortrows([idx_in_order,(1:length(idx_in_order))'],1); 
-idx_seq_fe = trg(:,2); 
+idx_seq_FE = trg(:,2); 
 end

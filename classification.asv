@@ -94,14 +94,17 @@ n_fe_cfy = length(idx_fe2cfy);
 
 % classifier of each facial part
 name_classifier = {'cf_eyebrow','cf_lipshapes'};
-n_cf = 2;
 
 % mapped avartar gesture of each facial part of each emotion
 tmp = name_fe(idx_fe2cfy);
 name_gesture_clfr = cell(n_fe_cfy,n_cf);
 for i = 1 : n_fe_cfy
-    name_gesture_clfr(i,:) = strsplit(tmp{i},'-');
+    C = strsplit(tmp{i},'-');
 end
+name_gesture_clfr{1} = {'eye_brow_down','neutral','neutral','neutral','eye_brow_down','eye_brow_sad',...
+    'eye_brow_happy', 'neutral','neutral','eye_brow_sad','eye_brow_up'};
+name_gesture_clfr{2} = {'lip_tighten','lip_stretch_down','lip_happy',...
+    'neutral', 'lip_sulky','lip_open'};
 
 % name of types of features
 name_feat = {'RMS';'WL';'SampEN';'CC'};
@@ -122,6 +125,7 @@ name_feat = {'RMS';'WL';'SampEN';'CC'};
 
 %=============numeber of variables
 [n_seg, n_feat, n_fe, n_trl, n_sub , n_emg_pair] = size(feat);
+n_cf = length(name_classifier);
 n_sub_compared = n_sub - 1;
 n_ftype = length(name_feat);
 n_bip_ch = 4;
