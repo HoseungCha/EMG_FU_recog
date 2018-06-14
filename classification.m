@@ -124,7 +124,7 @@ name_feat = {'RMS';'WL';'SampEN';'CC'};
 [n_seg, n_feat, n_fe, n_trl, n_sub , n_emg_pair] = size(feat);
 n_sub_compared = n_sub - 1;
 n_ftype = length(name_feat);
-n_bip_ch = 4;
+n_ch = 4;
 n_fe_cf = {6,8};
 %=============indices of variables
 idx_sub = 1 : n_sub;
@@ -267,25 +267,51 @@ for i_emg_pair = 1 : n_emg_pair
                 target_train = cat(1,target_feat_ref,target_feat_trans);
                 %=========================================================%
                 
+                idx_train = countmember(target_train,idx_fe2cfy)==1;
+                %==================TRAIN EACH EMOTION=====================%
+                model.emotion = fitcdiscr(...
+                        input_train(idx_train,:),...
+                        target_train(idx_train));
+                %=========================================================%
+                
                 %=================TRAIN FACIAL PARTS======================%
                 
                 % get features of determined emotions that you want to classify
                 model.parts = cell(n_cf,1);
                 for i_cf = 1 : n_cf
-                    idx_train_samples_2_classify =...
-                        countmember(target_train,idx_fe2cfy)==1;
-                    
                     % train
                     model.parts{i_cf} = fitcdiscr(...
-                        input_train(idx_train_samples_2_classify,idx_ch_fe2classfy{i_cf}),...
-                        target_train(idx_train_samples_2_classify));
+                        input_train(idx_train,idx_ch_fe2classfy{i_cf}),...
+                        target_train(idx_train));
                 end
                 % saving models
                 r.model{i_emg_pair,i_sub,i_trl,n_t+1} = model;
-               
+               %=========================================================%
                 
-                %=================PREPARE DB FOR TEST=====================%
+               
+                %================= TEST=====================%
                 % get input and targets for test DB
+                idx_trl_test = find(idx_trl~=i_trl==1);
+
+                for i_trl_test = idx_trl_test
+                for i_seg = 1 : n_seg
+                for i_fe = 1 : n_fe
+                    f = feat(i_seg,:,i_fe,i_trl_test,i_sub,i_emg_pair);
+                    
+                    % pass to classfiers
+                    f_onset = f(idx_feat{1});
+                    o_onset = NaN(n_ch,1); s_onset = NaN(n_ch,n_fe_cfy);
+                    for i_ch = 1 : n_ch
+                        [o_onset(i_ch),s_onset(i_ch)] = ...
+                            predict(model_tree_emg_onset,f_onset(i_ch));
+                    end
+                    model.emotion
+                    
+                    
+                end
+                end
+                end
+                
                 input_test = reshape(permute(feat(:,: ,:,idx_trl~=i_trl,...
                     i_sub,i_emg_pair),[1 4 3 2]),[n_seg*(n_trl-1)*n_fe,n_feat]);
                 target_test = repmat(1:n_fe,n_seg*(n_trl-1),1);
@@ -298,18 +324,18 @@ for i_emg_pair = 1 : n_emg_pair
                 % +++++CLASSIFICATION OF EMG ONSET
                 % get RMS features of TEST
                 input_test_rms = input_test(:,idx_feat{1});
-                output_emg_onset = cell(n_bip_ch,1);
-                score_emg_onset = cell(n_bip_ch,1);
-                for i_bip_ch = 1 : n_bip_ch
+                output_emg_onset = cell(n_ch,1);
+                score_emg_onset = cell(n_ch,1);
+                for i_ch = 1 : n_ch
                     [tmp,tmp2] = ...
-                        predict(model_tree_emg_onset,input_test_rms(:,i_bip_ch));
-                    output_emg_onset{i_bip_ch} = reshape(tmp,[n_seg,(n_trl-1),n_fe]);
-                    score_emg_onset{i_bip_ch} = reshape(tmp2,[n_seg,(n_trl-1),n_fe,2]);
+                        predict(model_tree_emg_onset,input_test_rms(:,i_ch));
+                    output_emg_onset{i_ch} = reshape(tmp,[n_seg,(n_trl-1),n_fe]);
+                    score_emg_onset{i_ch} = reshape(tmp2,[n_seg,(n_trl-1),n_fe,2]);
                 end
                 
                 % +++++CLASSIFICATION BY emotion model+++++++++
                 [~,score_test_emotion] = predict(model.emotion,input_test);
-                score_test_emotion = reshape(score_test_emotion,[n_seg,(n_trl-1),n_fe,n_fe]);
+                score_test_emotion = reshape(score_test_emotion,[n_seg,(n_trl-1),n_fe,n_fe_cfy]);
                 
                 % +++++CLASSIFICATION BY faical parts model+++++++++
                 output_test_parts = cell(n_cf,1);
@@ -322,9 +348,9 @@ for i_emg_pair = 1 : n_emg_pair
                 end                
                 
                 %===============APPLYING MAJORITY VOTING==================%
-                for i_bip_ch = 1 : n_bip_ch
-                    [output_emg_onset{i_bip_ch},score_emg_onset{i_bip_ch}]  = ...
-                        majority_vote_by_score(score_emg_onset{i_bip_ch},[0,1]);
+                for i_ch = 1 : n_ch
+                    [output_emg_onset{i_ch},score_emg_onset{i_ch}]  = ...
+                        majority_vote_by_score(score_emg_onset{i_ch},[0,1]);
                 end
                 
                 score_onset_parts{1} = mean(cat(4,score_emg_onset{2},score_emg_onset{3}),4);
