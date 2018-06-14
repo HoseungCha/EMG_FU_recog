@@ -166,7 +166,7 @@ r.model= cell(n_emg_pair,n_sub_val,n_trl,n_transforemd+1);
 % subject, trial, number of segment, FE,
 for i_emg_pair = 1 : n_emg_pair
     for i_sub = idx_sub_val
-%     for i_sub = 22
+%     for i_sub = 10:23
 %         for i_trl = 6
         for i_trl = 1 : n_trl
             %display of subject and trial in progress
@@ -354,10 +354,10 @@ for i_emg_pair = 1 : n_emg_pair
                 
                 
                 for i_fe = 1 : n_fe
-                for i_trl_test = 1
-%                 for i_trl_test = 1 : (n_trl-1)
-%                 for i_seg = 1 : n_seg
-                for i_seg = 15
+%                 for i_trl_test = 1
+                for i_trl_test = 1 : (n_trl-1)
+                for i_seg = 1 : n_seg
+%                 for i_seg = 15
                 % compare P.P. of each classifiers !!!!!!!!!!!!!!!!!!
                 score_matrix = NaN(n_cf,3);
                 output_matrix = NaN(n_cf,3);
@@ -376,21 +376,22 @@ for i_emg_pair = 1 : n_emg_pair
                 disp(output_matrix);
                 
                 % select classfier with p.p. with hightest value
-                maxval = max(score_matrix,[],2);
-                idx = score_matrix == maxval;
-                [~,idx_clf] = ind2sub(size(idx),find(idx==1));
+                max_scores = max(score_matrix,[],2);
+                idx = score_matrix == max_scores;
                 
-                maxval = max(score_matrix(idx));
-                idx2 = find(score_matrix(idx) == maxval==1);
+                idx_clf = NaN(n_cf,1);
+                for i_cf = 1 : n_cf
+                    idx_clf(i_cf) = find(idx(i_cf,:));
+                end                
+                
+                maxval = max(max_scores);
+                idx2 = find(max_scores == maxval==1);
                 if length(idx2) == 2
                     part_criteria = randi(2);
                 else
                     part_criteria = idx2;
                 end
                 
-%                 if idx_clf(part_criteria)~=2
-%                     keyboard;
-%                 end
                 % decide final output of facial part which will be used as
                 % crietria
                 output_final = NaN(2,1);                
@@ -400,7 +401,10 @@ for i_emg_pair = 1 : n_emg_pair
                 % decide final ouput of other facial part based on 
                 % facial expressions generated naturally
                 output_final(idx_part_2_be_searched) = ...
-                    output_matrix(idx_part_2_be_searched,idx_clf(part_criteria));
+                    output_matrix(idx_part_2_be_searched,idx_clf(idx_part_2_be_searched));
+                
+                % if output has zero(which comes from EMG onset detection)
+                output_final(output_final==0) = 9;
                 
                 if part_criteria == 1 % criterian has been set with eye brow
                     % get possible lip expressions based on eye brow 
@@ -417,6 +421,7 @@ for i_emg_pair = 1 : n_emg_pair
                     possible_exps,output_final(idx_part_2_be_searched));
                 disp(output_final);
                 
+                
                 % named gestures of each facial part
                 gest_avartar = cell(n_cf,1);
                 for i_cf = 1 : n_cf
@@ -424,10 +429,10 @@ for i_emg_pair = 1 : n_emg_pair
                 end
                 
                 % composing avartar by each classfied final ouput
-                plot_avartar(gest_avartar{1},'neutral',gest_avartar{2});
-                title(name_fe{i_fe})
-                set(gcf,'Position',[2613 242 560 420]);
-                drawnow;
+%                 plot_avartar(gest_avartar{1},'neutral',gest_avartar{2});
+%                 title(name_fe{i_fe})
+%                 set(gcf,'Position',[2613 242 560 420]);
+%                 drawnow;
                 
                 % validation
                 output = [];
@@ -481,34 +486,9 @@ end
 save(fullfile(path_saving,'result'),'r');
 %-------------------------------------------------------------------------%
 
-%------------------------------results of plot----------------------------%
-
-% tmp = mean(mean(r.acc(15,:,:,1,:,:),2),3);
-% tmp = reshape(tmp,n_emg_pair,n_cf);
-% bar(tmp);
-% mean(tmp,2)
-% for n_t = 0
-%     for i_emg_pair = 1
-%         for i_cf = 1 : n_cf
-%             for i_seg = 15
-%                 tmp = cat(1,r.output_n_target{i_seg,:,:,n_t+1,i_emg_pair,i_cf});
-%                 output_tmp = full(ind2vec(tmp(:,1)'));
-%                 target_tmp = full(ind2vec(tmp(:,2)'));
-%                 
-%                 tmp = countmember(1:max(idx_fe2classfy{i_cf}),idx_fe2classfy{i_cf})==0;
-%                 output_tmp(tmp,:) = [];
-%                 target_tmp(tmp,:) = [];
-%                 
-%                 [~,mat_conf,idx_of_samps_with_ith_target,~] = ...
-%                     confusion(target_tmp,output_tmp);
-%                 figure;
-%                 title(sprintf('n_t %d emg_pair %d i_cf %d i_seg %d',...
-%                     n_t,i_emg_pair,i_cf,i_seg));
-%                 plotConfMat(mat_conf, name_fe2classfy{i_cf})
-%             end
-%         end
-%     end
-% end
+%------------------------------results processing-------------------------%
+tmp = mean(mean(r.acc(1,:,:,:,:,:,:),2),3);
+tmp = squeeze(tmp);
 %-------------------------------------------------------------------------%
 
 
