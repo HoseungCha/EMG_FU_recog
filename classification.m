@@ -330,8 +330,8 @@ for n_t = 0:n_transforemd
     c_t = 0;
     for i_trl_test = idx_trl_test
         c_t = c_t + 1;
-%         for i_fe = 1 : n_fe
-        for i_fe = [6,13]
+        for i_fe = 1 : n_fe
+%         for i_fe = [6,13]
             % save score(likelihood) in circleque
             score_matrix_cq{1,1} = circlequeue(n_seg,2);
             score_matrix_cq{2,1} = circlequeue(n_seg,2);
@@ -341,9 +341,9 @@ for n_t = 0:n_transforemd
             score_matrix_cq{2,3} = circlequeue(n_seg,n_fe_cfy);
 
             for i_seg = 1 : n_seg
-                if i_seg == 30
-                   keyboard;
-                end
+%                 if i_seg == 30
+%                    keyboard;
+%                 end
                    
                 % get feature during real-time
                 f = feat(i_seg,:,i_fe,i_trl_test,i_sub,i_emg_pair);
