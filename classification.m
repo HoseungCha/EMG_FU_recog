@@ -343,7 +343,7 @@ for n_t = 0:n_transforemd
     for i_trl_test = idx_trl_test
         c_t = c_t + 1;
         for i_fe = 1 : n_fe
-%         for i_fe = [6,13]
+%         for i_fe = [15]
             % save score(likelihood) in circleque
             score_matrix_cq{1,1} = circlequeue(n_seg,n_fe_cfy);
             score_matrix_cq{2,1} = circlequeue(n_seg,n_fe_cfy);
@@ -404,7 +404,7 @@ for n_t = 0:n_transforemd
                 
                 % temperilly test
                 score_matrix_test =  score_matrix;
-                score_matrix_test(:,2)  = 0;
+%                 score_matrix_test(:,2)  = 0;
                 % select classfier with p.p. with hightest value
                 score_ouput = NaN(n_part,2);
                 for i_part = 1 : n_part
