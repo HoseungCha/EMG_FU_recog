@@ -114,7 +114,7 @@ name_feat = {'RMS';'WL';'SampEN';'CC'};
 [n_seg, n_feat, n_fe, n_trl, n_sub , n_emg_pair] = size(feat);
 n_part =2;
 n_cf = 2;
-
+n_emg_pair = 1;
 n_sub_compared = n_sub - 1;
 n_ftype = length(name_feat);
 n_bip_ch = 4;
@@ -433,8 +433,8 @@ for n_t = 0:n_transforemd
                 acc = all([strcmp(target{1},output{1}),strcmp(target{2},output{2})]);
                 %                 acc_emo = strcmp(ouput_emo,target_emo);
 
-                disp(target);
-                disp(output);
+%                 disp(target);
+%                 disp(output);
                 % get accurcy
                 r.acc(i_emg_pair,i_sub,i_trl,n_t+1,i_seg,c_t,i_fe)...
                     = acc;
@@ -461,11 +461,63 @@ end
 save(fullfile(path_saving,'result'),'r');
 %-------------------------------------------------------------------------%
 
-%------------------------------results processing-------------------------%
-tmp = mean(mean(r.acc(1,:,:,:,:,:,:),2),3);
-tmp = squeeze(tmp);
-%-------------------------------------------------------------------------%
+%==============================부위별 분류 결과============================%
+close all
+tmp1 = squeeze(r.output_n_target(1,:,:,1,30,:,:));
+tmp1 = tmp1(:);
+tmp1 = cat(1,tmp1{:});
 
+
+
+for i_part = 1 : n_part
+% name_neutral = {'neutral','neutral'};
+name_gesture = [name_gesture_clfr];
+n = length(name_gesture(:,i_part));
+    
+output = strcat(tmp1(:,i_part));
+target = strcat(tmp1(:,i_part+2));
+
+
+
+% name_fe_eye = {'neutral';'eye_brow_down';'eye_brow_happy';'eye_brow_sad'};
+[~,tmp]  = ismember(output,name_gesture(:,i_part));
+idx2delete = find(tmp==0);
+tmp(idx2delete) =[];
+
+B = unique(tmp);
+out = [B,histc(tmp,B)];
+
+output_tmp = full(ind2vec(tmp',n));
+
+[~,tmp]  = ismember(target,name_gesture(:,i_part));
+tmp(idx2delete) =[];
+target_tmp = full(ind2vec(tmp',n));
+
+B = unique(tmp);
+out = [B,histc(tmp,B)];
+% compute confusion
+[~,mat_conf,idx_of_samps_with_ith_target,~] = ...
+    confusion(target_tmp,output_tmp);
+
+figure;
+h = plotconfusion(target_tmp,output_tmp);
+name_conf = strrep(name_gesture(:,i_part),'_',' ');
+
+h.Children(2).XTickLabel(1:n) = name_conf;
+h.Children(2).YTickLabel(1:n)  = name_conf;
+
+% plotConfMat(mat_conf', name_conf)
+end
+%=========================================================================%
+
+%------------------------------results processing-------------------------%
+acc = NaN(n_fe,1);
+for i_fe = 1 : n_fe
+tmp = squeeze(r.acc(1,:,:,1,30,:,i_fe));
+tmp = tmp(:);
+acc(i_fe) = length(find(tmp==1))/length(tmp);
+end
+%-------------------------------------------------------------------------%
 
 
 
