@@ -435,8 +435,10 @@ end
 %-------------------------------------------------------------------------%
 
 %-------------------------------save results------------------------------%
-save(fullfile(path_saving,sprintf('DB-%s_ntrans-%d_onset-%d-compmethod-%s',...
-id_DB_val,n_transforemd,id_use_emg_onset_feat,id_att_compare)),'r','-v7.3');
+name_saving = sprintf('DB-%s_ntrans-%d_onset-%d-compmethod-%s',...
+id_DB_val,n_transforemd,id_use_emg_onset_feat,id_att_compare);
+
+save(fullfile(path_saving,name_saving),'r');
 
 % load(fullfile(path_saving,'result'));
 %-------------------------------------------------------------------------%
