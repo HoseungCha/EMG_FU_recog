@@ -18,7 +18,7 @@ name_DB_raw = 'DB_raw3';
 name_DB_process = 'DB_processed3';
 
 % load feature set, which was extracted by feat_extration.m
-name_DB_analy = 'feat_set_DB_raw3_n_sub_2_n_seg_30_n_wininc_204_winsize_204';
+name_DB_analy = 'feat_set_DB_raw3_n_sub_8_n_seg_30_n_wininc_204_winsize_204';
 
 % decide number of tranfored feat from DB
 n_transforemd = 0;
@@ -28,7 +28,8 @@ n_transforemd = 0;
 % 'all' : [:,:,:,:,:], 'Only_Seg' : [i_seg,:,:,:,:], 'Seg_FE' : [i_seg,:,i_FE,:,:]
 id_att_compare = 'Seg_FE'; % 'all', 'Only_Seg', 'Seg_FE'
 
-idx_fe2reject = [3,9,17];
+% decide whether to use emg onset fueatre
+id_use_emg_onset_feat = 1;
 %-------------------------------------------------------------------------%
 
 %-------------set paths in compliance with Cha's code structure-----------%
@@ -53,10 +54,9 @@ addpath(genpath(fullfile(cd,'functions')));
 
 %-----------------------------load DB-------------------------------------%
 % load feature set, from this experiment
-tmp = load(fullfile(path_DB_process,name_DB_analy,'feat_set_pair_1'));
+tmp = load(fullfile(path_DB_process,name_DB_analy,'feat_seg'));
 tmp_name = fieldnames(tmp);
 feat = getfield(tmp,tmp_name{1}); %#ok<GFLD>
-feat(:,:,idx_fe2reject,:,:) = [];
 
 % check if there are feat from other experiment and if thre is, concatinate
 if exist('feat_DB','var')
@@ -71,13 +71,11 @@ load(fullfile(path_DB_process,'model_tree_emg_onset.mat'));
 % trigger singals corresponding to each facial expression(emotion)
 name_fe = {'neutral-neutral'
     'eye_brow_down-lip_open'
-    'eye_brow_down-lip_stretch_down'
     'eye_brow_down-lip_sulky'
     'eye_brow_down-lip_tighten'
     'eye_brow_down-neutral'
     'eye_brow_happy-lip_happy'
     'eye_brow_sad-lip_open'
-    'eye_brow_sad-lip_stretch_down'
     'eye_brow_sad-lip_sulky'
     'eye_brow_sad-lip_tighten'
     'eye_brow_sad-neutral'
@@ -85,43 +83,23 @@ name_fe = {'neutral-neutral'
     'eye_brow_up-neutral'
     'neutral-lip_happy'
     'neutral-lip_open'
-    'neutral-lip_stretch_down'
     'neutral-lip_sulky'
     'neutral-lip_tighten'
     };
 for i = 1 : length(name_fe)
     tmp = strsplit(name_fe{i},'-');
-    name_fe_eb{i,1} = tmp{1};
-    name_fe_lp{i,1} = tmp{2};
+    name_fe_eb_total{i,1} = tmp{1};
+    name_fe_lp_total{i,1} = tmp{2};
 end
-name_emo = {'neutral'
-    'angry'
-    'angry'
-    'angry'
-    'angry'
-    'angry'
-    'happy'
-    'sad'
-    'sad'
-    'sad'
-    'sad'
-    'sad'
-    'surprised'
-    'surprised'
-    'happy'
-    'surprised'
-    'sad'
-    'sad'
-    'sad'
-    };
-name_fe(idx_fe2reject) = [];
-name_emo(idx_fe2reject) = [];
-name_fe_eb(idx_fe2reject) = [];
-name_fe_lp(idx_fe2reject) = [];
+
 
 name_fe2cfy = {'neutral-neutral';'eye_brow_down-lip_tighten';'eye_brow_happy-lip_happy';...
     'eye_brow_sad-lip_sulky';'eye_brow_up-lip_open'};
-
+for i = 1 : length(name_fe2cfy)
+    tmp = strsplit(name_fe2cfy{i},'-');
+    name_fe_eb{i,1} = tmp{1};
+    name_fe_lp{i,1} = tmp{2};
+end
 idx_fe2cfy = find(contains(name_fe,name_fe2cfy)==1);
 n_fe_cfy = length(idx_fe2cfy);
 
@@ -131,10 +109,11 @@ n_fe_cfy = length(idx_fe2cfy);
 % classifier of each facial part
 name_classifier = {'cf_eyebrow','cf_lipshapes'};
 n_cf = 2;
+n_part = 2;
 n_class = [2,5,5];
 % mapped avartar gesture of each facial part of each emotion
 tmp = name_fe(idx_fe2cfy);
-name_gesture_clfr = cell(n_fe_cfy,n_cf);
+name_gesture_clfr = cell(n_fe_cfy,n_part);
 for i = 1 : n_fe_cfy
     name_gesture_clfr(i,:) = strsplit(tmp{i},'-');
 end
@@ -158,6 +137,7 @@ name_feat = {'RMS';'WL';'SampEN';'CC'};
 
 %=============numeber of variables
 [n_seg, n_feat, n_fe, n_trl, n_sub , n_emg_pair] = size(feat);
+n_emg_pair = 1;
 n_sub_compared = n_sub - 1;
 n_ftype = length(name_feat);
 n_bip_ch = 4;
@@ -168,7 +148,11 @@ idx_trl = 1 : n_trl;
 % idx_fe2classfy = {[1,6,7,9,10,11],[1,2,3,4,6,7,8,11]};
 idx_feat = {[1,2,3,4];[5,6,7,8];[9,10,11,12];13:28};
 idx_ch_fe2classfy = {[2,6,10,14,18,22,26,3,7,11,15,19,23,27],...
-    [1,5,9,13,17,21,25,4,8,12,16,20,24,28]};
+[1,5,9,13,17,21,25,4,8,12,16,20,24,28,]};
+if (id_use_emg_onset_feat)
+idx_ch_fe2classfy{1} = [idx_ch_fe2classfy{1},31:34];
+idx_ch_fe2classfy{2} = [idx_ch_fe2classfy{2},29:30,35:36];
+end
 % idx_emg_onest = [0,1];
 idx_ch_face_parts = {[2,3],[1,4]};
 
@@ -301,22 +285,34 @@ for n_t = 0:n_transforemd
     target_train = cat(1,target_feat_ref,target_feat_trans);
     %=========================================================%
 
+    %=================EMG ONSET FEATURE=======================%
+    score  = cell(n_bip_ch,1);
+    for i_ch = 1 : n_bip_ch
+        [~,score{i_ch}] = predict(model_tree_emg_onset,...
+            input_train(:,i_ch));
+    end
+    score = cat(2,score{:});
+    if (id_use_emg_onset_feat)
+    input_train = [input_train,score];
+    end
+    %=========================================================%
+
     idx_train = countmember(target_train,idx_fe2cfy)==1;
     %==================TRAIN EACH EMOTION=====================%
     model.emotion = fitcdiscr(...
         input_train(idx_train,:),...
-        target_train(idx_train));
+        target_train(idx_train),'discrimType','pseudoLinear');
     %=========================================================%
 
     %=================TRAIN FACIAL PARTS======================%
 
     % get features of determined emotions that you want to classify
-    model.parts = cell(n_cf,1);
-    for i_cf = 1 : n_cf
+    model.parts = cell(n_part,1);
+    for i_part = 1 : n_part
         % train
-        model.parts{i_cf} = fitcdiscr(...
-            input_train(idx_train,idx_ch_fe2classfy{i_cf}),...
-            target_train(idx_train));
+        model.parts{i_part} = fitcdiscr(...
+            input_train(idx_train,idx_ch_fe2classfy{i_part}),...
+            target_train(idx_train),'discrimType','pseudoLinear');
     end
     % saving models
     r.model{i_emg_pair,i_sub,i_trl,n_t+1} = model;
@@ -331,134 +327,95 @@ for n_t = 0:n_transforemd
     for i_trl_test = idx_trl_test
         c_t = c_t + 1;
         for i_fe = 1 : n_fe
-%         for i_fe = [6,13]
             % save score(likelihood) in circleque
-            score_matrix_cq{1,1} = circlequeue(n_seg,2);
-            score_matrix_cq{2,1} = circlequeue(n_seg,2);
+            score_matrix_cq{1,1} = circlequeue(n_seg,n_fe_cfy);
+            score_matrix_cq{2,1} = circlequeue(n_seg,n_fe_cfy);
             score_matrix_cq{1,2} = circlequeue(n_seg,n_fe_cfy);
             score_matrix_cq{2,2} = circlequeue(n_seg,n_fe_cfy);
-            score_matrix_cq{1,3} = circlequeue(n_seg,n_fe_cfy);
-            score_matrix_cq{2,3} = circlequeue(n_seg,n_fe_cfy);
 
             for i_seg = 1 : n_seg
-%                 if i_seg == 30
-%                    keyboard;
-%                 end
-                   
-                % get feature during real-time
-                f = feat(i_seg,:,i_fe,i_trl_test,i_sub,i_emg_pair);
+            % get feature during real-time
+            f = feat(i_seg,:,i_fe,i_trl_test,i_sub,i_emg_pair);
 
-                %====PASS THE TEST FEATURES TO CLASSFIERS=============%
-                %----EMG ONSET
-                f_onset = f(idx_feat{1});
-                s_ons = NaN(n_bip_ch,2);
-                for i_ch = 1 : n_bip_ch
-                    [~,s_ons(i_ch,:)] = ...
-                        predict(model_tree_emg_onset,f_onset(i_ch));
-                end
-                score_matrix_cq{1,1}.add(mean([s_ons(2,:);s_ons(3,:)]));
-                score_matrix_cq{2,1}.add(mean([s_ons(1,:);s_ons(4,:)]));
+            %====PASS THE TEST FEATURES TO CLASSFIERS=============%
+            %----EMG ONSET
+            f_onset = f(idx_feat{1});
+            s_ons = cell(n_bip_ch,1);
+            for i_ch = 1 : n_bip_ch
+                [~,s_ons{i_ch}] = ...
+                    predict(model_tree_emg_onset,f_onset(i_ch));
+            end
+            if (id_use_emg_onset_feat)
+                f = [f,cat(2,s_ons{:})];
+            end
+            %=======EMG ONSET FEATURE ADDITION
 
-                %----EMOTION CLASSFIER
-                [~,s_emo] = predict(model.emotion,f);
-                score_matrix_cq{1,2}.add(s_emo);
-                score_matrix_cq{2,2}.add(s_emo);
 
-                %----FACE PARTS CLASSFIER
-                for i_cf = 1 : n_cf
-                    [~,s_par] = predict(model.parts{i_cf},f(idx_ch_fe2classfy{i_cf}));
-                    score_matrix_cq{i_cf,3}.add(s_par);
-                end
-                %=====================================================%
+            %----EMOTION CLASSFIER
+            [~,s_emo] = predict(model.emotion,f);
+            score_matrix_cq{1,1}.add(s_emo);
+            score_matrix_cq{2,1}.add(s_emo);
 
-                score_matrix = NaN(n_cf,3);
-                output_matrix = NaN(n_cf,3);
-                for i_cf = 1 : n_cf
-                for i_cf_type = 1 : 3
+            %----FACE PARTS CLASSFIER
+            for i_part = 1 : n_part
+                [~,s_par] = predict(model.parts{i_part},f(idx_ch_fe2classfy{i_part}));
+                score_matrix_cq{i_part,2}.add(s_par);
+            end
+            %=====================================================%
+
+            score_matrix = NaN(n_part,n_part);
+            output_matrix = NaN(n_part,n_part);
+            for i_part = 1 : n_part
+                for i_part = 1 : n_cf
                     if i_seg<15
-                        tmp = mean(score_matrix_cq{i_cf,i_cf_type}.getLastN(i_seg),1);
+                        tmp = mean(score_matrix_cq{i_part,i_part}.getLastN(i_seg),1);
                     else
-                        tmp = mean(score_matrix_cq{i_cf,i_cf_type}.getLastN(15),1);
+                        tmp = mean(score_matrix_cq{i_part,i_part}.getLastN(15),1);
                     end
-%                     tmp = score_matrix_cq{i_cf,i_cf_type}.getLast;
-                    
                     % get max value
                     [max_v,max_idx] = get_max_and_idx(tmp);
 
                     % get socre matrix
-                    score_matrix(i_cf,i_cf_type) = max_v*n_class(i_cf_type);
-                    output_matrix(i_cf,i_cf_type) = max_idx;
+                    score_matrix(i_part,i_part) = max_v;
+                    output_matrix(i_part,i_part) = max_idx;
                 end
-                end
-                disp(score_matrix);
-                disp(output_matrix);
-                    
-                % temperilly test
-                score_matrix_test =  score_matrix;
-                score_matrix_test(:,[1,2])  = 0;
-                % select classfier with p.p. with hightest value
-                score_ouput = NaN(n_cf,2);
-                for i_cf = 1 : n_cf
-                    % get max value
-                    [max_v,max_idx] = get_max_and_idx(score_matrix_test(i_cf,:));
-                    score_ouput(i_cf,:) = [max_v,output_matrix(i_cf,max_idx)];
-                end
-                
-                % avarter expression
-                output_brow = name_gesture_clfr{score_ouput(1,2),1};
-                output_lip = name_gesture_clfr{score_ouput(2,2),2};
-                
-                % restriction based on score of ouput
-                if score_ouput(1,1) >= score_ouput(2,1) % 눈썹 기준으로 입모양 결정
-                    posbl_output = name_fe_lp(~cellfun(@isempty,strfind(name_fe_eb,output_brow))); %#ok<STRCLFH>
-                    posbl_output = unique(posbl_output);
-                    if any(ismember(posbl_output,output_lip)==1)
-                        output_lip = posbl_output{ismember(posbl_output,output_lip)};
-                    else
-                        output_lip = posbl_output{randi(length(posbl_output))};
-                    end
-                    
-                else % 입모양 기준으로 눈썹 모양 결정
-                    posbl_output = name_fe_eb(~cellfun(@isempty,strfind(name_fe_lp,output_lip))); %#ok<STRCLFH>
-                    posbl_output = unique(posbl_output);
-                    if any(ismember(posbl_output,output_brow)==1)
-                        output_brow = posbl_output{ismember(posbl_output,output_brow)};
-                    else
-                        output_brow = posbl_output{randi(length(posbl_output))};
-                    end
-                end
-              
-                % 눈썹 무표정, 입모양 행복한 표정 보완
-%                 if strcmp(output_brow,'eye_brow_happy')&&strcmp(output_lip,'lip_happy')
-%                     if output_matrix(1,1) == 1 
-%                         output_brow = 'neutral';
-%                     end
-%                 end
-                
-                
-                % output/target facial gesutres
-                output = {output_brow,output_lip};
-                target = strsplit(name_fe{i_fe},'-');
-                
-                % output/target emotion
-%                 ouput_emo = name_emo{contains(name_fe,strcat(output{1},'-',output{2}))};
-%                 target_emo = name_emo{contains(name_fe,strcat(target{1},'-',target{2}))};
+            end
+%                 disp(score_matrix);
+%                 disp(output_matrix);
 
-                % acc
-                acc = all([strcmp(target{1},output{1}),strcmp(target{2},output{2})]);
-%                 acc_emo = strcmp(ouput_emo,target_emo);
-                
-                disp(target);
-                disp({output_brow,output_lip});
-                % get accurcy
-                r.acc(i_emg_pair,i_sub,i_trl,n_t+1,i_seg,c_t,i_fe)...
-                    = acc;
-%                 r.acc_emo(i_emg_pair,i_sub,i_trl,n_t+1,i_seg,c_t,i_fe)...
-%                     = acc_emo;
-                r.output_n_target{i_emg_pair,i_sub,i_trl,n_t+1,i_seg,c_t,i_fe}...
-                    = {output_brow,output_lip,target{1},target{2}};
-%                 r.output_n_target_emo{i_emg_pair,i_sub,i_trl,n_t+1,i_seg,c_t,i_fe}...
-%                     = {ouput_emo,target_emo};
+            % output/target facial gesutres
+            %
+            for i_clf_method = 1 : n_part+1
+            score_matrix_test = score_matrix;
+            output_matrix_test = output_matrix;
+            if any(ismember(1:n_part,i_clf_method))
+                score_matrix_test(:,1:n_part~=i_clf_method) = 0;
+                output_matrix_test(:,1:n_part~=i_clf_method) = 0;
+            end
+
+            % get out and target
+            output = possible_fe_selector(score_matrix_test,output_matrix_test,...
+                 {name_fe_eb,name_fe_lp},n_part);  % Train 한 표정에서 제한 시켜버림 ( Train 한 표정에서 안나왔을 경우
+            target = {name_fe_eb_total{i_fe},name_fe_lp_total{i_fe}};
+%             disp(output');
+%             disp(target);
+            % change ouput to number index
+            output_n(1) = find(ismember(name_fe_eb,output{1})==1);
+            output_n(2) = find(ismember(name_fe_lp,output{2})==1);
+            target_n(1) = find(ismember(name_fe_eb,target{1})==1);
+            target_n(2) = find(ismember(name_fe_lp,target{2})==1);
+            
+            % results
+            acc = all([isequal(target_n(1),output_n(1)),isequal(target_n(2),output_n(2))]);
+            output_n_target = [output_n(1),target_n(1),output_n(2),target_n(2)];
+
+
+            % result saving
+            r.acc(i_emg_pair,i_sub,i_trl,n_t+1,i_seg,c_t,i_fe,i_clf_method)...
+                = acc;
+            r.output_n_target{i_emg_pair,i_sub,i_trl,n_t+1,i_seg,c_t,i_fe,i_clf_method}...
+             = output_n_target;
+            end
             end
         end
     end
@@ -486,38 +443,38 @@ tmp1 = cat(1,tmp1{:});
 
 
 
-for i_cf = 1 : n_cf
+for i_part = 1 : n_part
 % name_neutral = {'neutral','neutral'};
-name_gesture = [name_gesture_clfr];
-n = length(name_gesture(:,i_cf));
+% name_gesture = [name_gesture_clfr];
+n = length(name_gesture(:,i_part));
     
-output = strcat(tmp1(:,i_cf));
-target = strcat(tmp1(:,i_cf+2));
+output = tmp1(:,2*(i_part-1)+1);
+target = tmp1(:,2*i_part);
 
 
 
 % name_fe_eye = {'neutral';'eye_brow_down';'eye_brow_happy';'eye_brow_sad'};
-[~,tmp]  = ismember(output,name_gesture(:,i_cf));
-idx2delete = find(tmp==0);
-tmp(idx2delete) =[];
+% [~,tmp]  = ismember(output,name_gesture(:,i_cf));
+% idx2delete = find(tmp==0);
+% tmp(idx2delete) =[];
 
-B = unique(tmp);
-out = [B,histc(tmp,B)];
+% B = unique(tmp);
+% out = [B,histc(tmp,B)];
 
-output_tmp = full(ind2vec(tmp',n));
+output_tmp = full(ind2vec(output',n));
 
-[~,tmp]  = ismember(target,name_gesture(:,i_cf));
-tmp(idx2delete) =[];
-target_tmp = full(ind2vec(tmp',n));
+% [~,tmp]  = ismember(target,name_gesture(:,i_cf));
+% tmp(idx2delete) =[];
+target_tmp = full(ind2vec(target',n));
 
-B = unique(tmp);
-out = [B,histc(tmp,B)];
+% B = unique(tmp);
+% out = [B,histc(tmp,B)];
 % compute confusion
 [~,mat_conf,idx_of_samps_with_ith_target,~] = ...
     confusion(target_tmp,output_tmp);
 
 figure;
-name_conf = strrep(name_gesture(:,i_cf),'_',' ');
+name_conf = strrep(name_gesture(:,i_part),'_',' ');
 h = plotconfusion(target_tmp,output_tmp);
 h.Children(2).XTickLabel(1:n) = name_conf;
 h.Children(2).YTickLabel(1:n)  = name_conf;
@@ -537,30 +494,30 @@ end
 
 %=============================표정 합성 분류 결과==========================%
 
-tmp1 = squeeze(r.output_n_target(1,:,:,1,30,:,:));
-tmp1 = tmp1(:);
-tmp1 = cat(1,tmp1{:});
-
-output = strcat(tmp1(:,1),'-',tmp1(:,3));
-target = strcat(tmp1(:,2),'-',tmp1(:,4));
-
-% name_fe_eye = {'neutral';'eye_brow_down';'eye_brow_happy';'eye_brow_sad'};
-[~,tmp]  = ismember(output,name_fe);
-idx2delete = tmp==0;
-tmp(idx2delete) =[];
-output_tmp = full(ind2vec(tmp',n_fe));
-
-[~,tmp]  = ismember(target,name_fe);
-tmp(idx2delete) =[];
-target_tmp = full(ind2vec(tmp',n_fe));
-
-% compute confusion
-[~,mat_conf,idx_of_samps_with_ith_target,~] = ...
-    confusion(target_tmp,output_tmp);
-
-figure;
-name_fe = strrep(name_fe,'_',' ');
-plotConfMat(mat_conf, name_fe)
+% tmp1 = squeeze(r.output_n_target(1,:,:,1,30,:,:));
+% tmp1 = tmp1(:);
+% tmp1 = cat(1,tmp1{:});
+% 
+% output = strcat(tmp1(:,1),'-',tmp1(:,3));
+% target = strcat(tmp1(:,2),'-',tmp1(:,4));
+% 
+% % name_fe_eye = {'neutral';'eye_brow_down';'eye_brow_happy';'eye_brow_sad'};
+% [~,tmp]  = ismember(output,name_fe);
+% idx2delete = tmp==0;
+% tmp(idx2delete) =[];
+% output_tmp = full(ind2vec(tmp',n_fe));
+% 
+% [~,tmp]  = ismember(target,name_fe);
+% tmp(idx2delete) =[];
+% target_tmp = full(ind2vec(tmp',n_fe));
+% 
+% % compute confusion
+% [~,mat_conf,idx_of_samps_with_ith_target,~] = ...
+%     confusion(target_tmp,output_tmp);
+% 
+% figure;
+% name_fe = strrep(name_fe,'_',' ');
+% plotConfMat(mat_conf, name_fe)
 %=========================================================================%
 
 

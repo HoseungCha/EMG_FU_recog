@@ -17,6 +17,8 @@ name_DB_process = 'DB_processed3';
 % decide number of segments in 3-sec long EMG data
 period_wininc = 0.1; % s
 
+idx_fe2reject = [3,9,17];
+
 %-------------------------------------------------------------------------%
 
 %-------------set paths in compliance with Cha's code structure-----------%
@@ -54,6 +56,11 @@ name_fe = {'neutral-neutral'
 'neutral-lip_sulky'
 'neutral-lip_tighten'
 };
+name_fe_old = name_fe;
+old_index = 1:19;
+old_index(idx_fe2reject) = [];
+index_pair = [old_index;1:16'];
+name_fe(idx_fe2reject) = [];
 n_fe = length(name_fe);% Number of facial expression
 n_trl = 10; % Number of Trials
 %-------------------------------------------------------------------------%
@@ -119,6 +126,15 @@ for i_sub= 1 : n_sub
         
         % get latnecy of each trigger
         [lat_trg,idx_seq_fe] = get_trg(tmp_trg);
+        
+        if length(idx_seq_fe) == 19
+        idx_delete = ismember(idx_seq_fe,idx_fe2reject);
+        idx_seq_fe(idx_delete) = [];
+        lat_trg(idx_delete) = [];
+            for i = 1 : 16
+                idx_seq_fe(i) = index_pair(2,idx_seq_fe(i)==index_pair(1,:));
+            end
+        end
        
         % get raw data and bipolar configuration        
         data_bip.RZ= out.data(idx_pair_right(i_emg_pair,1),:) - out.data(idx_pair_right(i_emg_pair,2),:);%Right_Zygomaticus
