@@ -410,7 +410,7 @@ for i_trl_test = idx_trl_test
             target_n(2) = find(ismember(name_gesture_c2{2},target{2})==1);
             
             % results
-            acc = all([isequal(target_n(1),output_n(1)),isequal(target_n(2),output_n(2))]);
+            acc = all([strcmp(target_n(1),output_n(1)),strcmp(target_n(2),output_n(2))]);
             output_n_target = [output_n(1),target_n(1),output_n(2),target_n(2)];
 
 
@@ -453,7 +453,8 @@ tmp1 = cat(1,tmp1{:});
 
 for i_part = 1 : n_part
 % name_neutral = {'neutral','neutral'};
-n_fe_result = length(name_gesture_c1{i_part});
+n_fe_result = length(name_gesture_c1{i_part,2});
+
 output = strcat(tmp1(:,i_part));
 target = strcat(tmp1(:,i_part+2));
 
