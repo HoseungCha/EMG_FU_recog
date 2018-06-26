@@ -29,7 +29,7 @@ n_transforemd = 0;
 id_att_compare = 'Seg_FE'; % 'all', 'Only_Seg', 'Seg_FE'
 
 % decide whether to use emg onset fueatre
-id_use_emg_onset_feat = 1;
+id_use_emg_onset_feat = 0
 %-------------------------------------------------------------------------%
 
 %-------------set paths in compliance with Cha's code structure-----------%
@@ -366,18 +366,18 @@ for n_t = 0:n_transforemd
             score_matrix = NaN(n_part,n_part);
             output_matrix = NaN(n_part,n_part);
             for i_part = 1 : n_part
-                for i_part = 1 : n_cf
+                for i_cf = 1 : n_cf
                     if i_seg<15
-                        tmp = mean(score_matrix_cq{i_part,i_part}.getLastN(i_seg),1);
+                        tmp = mean(score_matrix_cq{i_part,i_cf}.getLastN(i_seg),1);
                     else
-                        tmp = mean(score_matrix_cq{i_part,i_part}.getLastN(15),1);
+                        tmp = mean(score_matrix_cq{i_part,i_cf}.getLastN(15),1);
                     end
                     % get max value
                     [max_v,max_idx] = get_max_and_idx(tmp);
 
                     % get socre matrix
-                    score_matrix(i_part,i_part) = max_v;
-                    output_matrix(i_part,i_part) = max_idx;
+                    score_matrix(i_part,i_cf) = max_v;
+                    output_matrix(i_part,i_cf) = idx_fe2cfy(max_idx);
                 end
             end
 %                 disp(score_matrix);
@@ -386,27 +386,35 @@ for n_t = 0:n_transforemd
             % output/target facial gesutres
             %
             for i_clf_method = 1 : n_part+1
+%             for i_clf_method = n_part+1
             score_matrix_test = score_matrix;
             output_matrix_test = output_matrix;
             if any(ismember(1:n_part,i_clf_method))
                 score_matrix_test(:,1:n_part~=i_clf_method) = 0;
                 output_matrix_test(:,1:n_part~=i_clf_method) = 0;
             end
-
+            
+            disp(score_matrix_test)
+            disp(output_matrix_test)
+            
             % get out and target
             output = possible_fe_selector(score_matrix_test,output_matrix_test,...
-                 {name_fe_eb,name_fe_lp},n_part);  % Train 한 표정에서 제한 시켜버림 ( Train 한 표정에서 안나왔을 경우
+                 {name_fe_eb_total,name_fe_lp_total},n_part);  % Train 한 표정에서 제한 시켜버림 ( Train 한 표정에서 안나왔을 경우
             target = {name_fe_eb_total{i_fe},name_fe_lp_total{i_fe}};
-%             disp(output');
-%             disp(target);
+            disp(target);
+            disp(output');
             % change ouput to number index
             output_n(1) = find(ismember(name_fe_eb,output{1})==1);
             output_n(2) = find(ismember(name_fe_lp,output{2})==1);
             target_n(1) = find(ismember(name_fe_eb,target{1})==1);
             target_n(2) = find(ismember(name_fe_lp,target{2})==1);
-            
+%             disp(target_n);
+%             disp(output_n);
             % results
-            acc = all([isequal(target_n(1),output_n(1)),isequal(target_n(2),output_n(2))]);
+            acc = all([target_n(1)==output_n(1),target_n(2)==output_n(2)]);
+%             if acc == 1
+%                 keyboard;
+%             end
             output_n_target = [output_n(1),target_n(1),output_n(2),target_n(2)];
 
 
@@ -437,16 +445,16 @@ load(fullfile(path_saving,'result'));
 
 %==============================부위별 분류 결과============================%
 close all
-tmp1 = squeeze(r.output_n_target(1,:,:,1,30,:,:));
+tmp1 = squeeze(r.output_n_target(1,:,:,1,30,:,:,3));
 tmp1 = tmp1(:);
 tmp1 = cat(1,tmp1{:});
 
 
-
+name_gesture = {name_fe_eb,name_fe_lp};
 for i_part = 1 : n_part
 % name_neutral = {'neutral','neutral'};
 % name_gesture = [name_gesture_clfr];
-n = length(name_gesture(:,i_part));
+n = length(name_gesture{i_part});
     
 output = tmp1(:,2*(i_part-1)+1);
 target = tmp1(:,2*i_part);
@@ -474,7 +482,7 @@ target_tmp = full(ind2vec(target',n));
     confusion(target_tmp,output_tmp);
 
 figure;
-name_conf = strrep(name_gesture(:,i_part),'_',' ');
+name_conf = strrep(name_gesture{i_part},'_',' ');
 h = plotconfusion(target_tmp,output_tmp);
 h.Children(2).XTickLabel(1:n) = name_conf;
 h.Children(2).YTickLabel(1:n)  = name_conf;
@@ -484,11 +492,13 @@ end
 %=========================================================================%
 
 %------------------------------results processing-------------------------%
-acc = NaN(n_fe,1);
+acc = NaN(n_fe,3);
+for i_cl_method = 1 : 3
 for i_fe = 1 : n_fe
-tmp = squeeze(r.acc(1,:,:,1,30,:,i_fe));
+tmp = squeeze(r.acc(1,:,:,1,30,:,i_fe,i_cl_method));
 tmp = tmp(:);
-acc(i_fe) = length(find(tmp==1))/length(tmp);
+acc(i_fe,i_cl_method) = length(find(tmp==1))/length(tmp);
+end
 end
 %-------------------------------------------------------------------------%
 
