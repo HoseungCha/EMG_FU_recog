@@ -18,7 +18,7 @@ name_DB_raw = 'DB_raw2';
 name_DB_process = 'DB_processed2';
 
 % load feature set, which was extracted by feat_extration.m
-name_DB_analy = 'feat_set_DB_raw2_n_sub_39_n_seg_30_n_wininc_204_winsize_204';
+name_DB_analy = 'feat_set_DB_raw2_n_sub_57_n_seg_30_n_wininc_204_winsize_204';
 
 % decide if validation datbase set
 id_DB_val = 'myoexp2'; % myoexp1, myoexp2, both
@@ -57,10 +57,13 @@ addpath(genpath(fullfile(cd,'functions')));
 
 %-----------------------------load DB-------------------------------------%
 % load feature set, from this experiment
-tmp = load(fullfile(path_DB_process,name_DB_analy,'feat_set_pair_1'));
+tmp = load(fullfile(path_DB_process,name_DB_analy,'feat_seg_pair_1'));
 tmp_name = fieldnames(tmp);
 feat = getfield(tmp,tmp_name{1}); %#ok<GFLD>
 
+tmp = load(fullfile(path_DB_process,name_DB_analy,'feat_seq_pair_1'));
+tmp_name = fieldnames(tmp);
+feat_test = getfield(tmp,tmp_name{1}); %#ok<GFLD>
 
 % check if there are feat from other experiment and if thre is, concatinate
 if exist('feat_DB','var')
@@ -340,6 +343,7 @@ for i_trl_test = idx_trl_test
         for i_seg = 1 : n_seg
 
             % get feature during real-time
+%             feat_test{i_trl_test,i_sub}
             f = feat(i_seg,:,i_fe,i_trl_test,i_sub,i_emg_pair);
 
             %====PASS THE TEST FEATURES TO CLASSFIERS=============%
@@ -440,7 +444,7 @@ id_DB_val,n_transforemd,id_use_emg_onset_feat,id_att_compare);
 
 save(fullfile(path_saving,name_saving),'r');
 
-% load(fullfile(path_saving,'result'));
+load(fullfile(path_saving,name_saving));
 %-------------------------------------------------------------------------%
 
 %==============================부위별 분류 결과============================%
@@ -491,11 +495,13 @@ end
 %=========================================================================%
 
 %------------------------------results processing-------------------------%
-acc = NaN(n_fe,1);
+acc = NaN(n_fe,3);
+for i_clf_method = 1 : 3
 for i_fe = 1 : n_fe
-tmp = squeeze(r.acc(1,:,:,1,30,:,i_fe));
+tmp = squeeze(r.acc(1,:,:,1,30,:,i_fe,i_clf_method));
 tmp = tmp(:);
-acc(i_fe) = length(find(tmp==1))/length(tmp);
+acc(i_fe,i_clf_method) = length(find(tmp==1))/length(tmp);
+end
 end
 %-------------------------------------------------------------------------%
 

@@ -410,7 +410,7 @@ for i_trl_test = idx_trl_test
             target_n(2) = find(ismember(name_gesture_c2{2},target{2})==1);
             
             % results
-            acc = all([strcmp(target_n(1),output_n(1)),strcmp(target_n(2),output_n(2))]);
+            acc = all([isequal(target_n(1),output_n(1)),isequal(target_n(2),output_n(2))]);
             output_n_target = [output_n(1),target_n(1),output_n(2),target_n(2)];
 
 
@@ -440,7 +440,7 @@ id_DB_val,n_transforemd,id_use_emg_onset_feat,id_att_compare);
 
 save(fullfile(path_saving,name_saving),'r');
 
-% load(fullfile(path_saving,'result'));
+load(fullfile(path_saving,name_saving));
 %-------------------------------------------------------------------------%
 
 %==============================부위별 분류 결과============================%
@@ -453,8 +453,7 @@ tmp1 = cat(1,tmp1{:});
 
 for i_part = 1 : n_part
 % name_neutral = {'neutral','neutral'};
-n_fe_result = length(name_gesture_c1{i_part,2});
-
+n_fe_result = length(name_gesture_c1{i_part});
 output = strcat(tmp1(:,i_part));
 target = strcat(tmp1(:,i_part+2));
 
@@ -492,11 +491,13 @@ end
 %=========================================================================%
 
 %------------------------------results processing-------------------------%
-acc = NaN(n_fe,1);
+acc = NaN(n_fe,3);
+for i_clf_method = 1 : 3
 for i_fe = 1 : n_fe
-tmp = squeeze(r.acc(1,:,:,1,30,:,i_fe));
+tmp = squeeze(r.acc(1,:,:,1,30,:,i_fe,i_clf_method));
 tmp = tmp(:);
-acc(i_fe) = length(find(tmp==1))/length(tmp);
+acc(i_fe,i_clf_method) = length(find(tmp==1))/length(tmp);
+end
 end
 %-------------------------------------------------------------------------%
 

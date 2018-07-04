@@ -83,8 +83,8 @@ path_save = make_path_n_retrun_the_path(fullfile(path_DB_process),...
 
 
 % memory alloation
-feat_seg = NaN(n_seg,n_feat,n_fe,n_trl,n_sub);
-feat_seq = cell(n_trl,n_sub);
+win_seg = cell(n_trl,n_sub,n_fe);
+win_seq = cell(n_trl,n_sub);
 idx_fe_seq = cell(n_trl,n_sub);
 for i_emg_pair = 1 : n_emg_pair
 for i_sub= 1 : n_sub
@@ -129,41 +129,31 @@ for i_sub= 1 : n_sub
         % get raw data and bipolar configuration
 %         raw_data = double(OUT.data'); % raw data
 %         temp_chan = cell(1,6);
-        % get raw data and bipolar configuration        
-        data_bip.RZ= out.data(idx_pair_right(i_emg_pair,1),:) - out.data(idx_pair_right(i_emg_pair,2),:);%Right_Zygomaticus
-        data_bip.RF= out.data(4,:) - out.data(5,:); %Right_Frontalis
-        data_bip.LF= out.data(6,:) - out.data(7,:); %Left_Corrugator
-        data_bip.LZ= out.data(idx_pair_left(i_emg_pair,1),:) - out.data(idx_pair_left(i_emg_pair,2),:); %Left_Zygomaticus
-        data_bip = double(cell2mat(struct2cell(data_bip)))';
+        % get raw data and bipolar configuration     
+        idx2use_emg_pair = ...
+            [idx_pair_right(i_emg_pair,:),idx_pair_left(i_emg_pair,:)];
+        idx2use_ch = sort([idx2use_emg_pair, 4,5,6,7,]);
+        data2use = double(out.data(idx2use_ch,:))';
+        
         clear out;
         % Filtering
-        data_filtered = filter(fp.nb, fp.na, data_bip,[],1);
+        data_filtered = filter(fp.nb, fp.na, data2use,[],1);
         data_filtered = filter(fp.bb, fp.ba, data_filtered, [],1);
-        clear data_bip;
-        % for plot
-%         figure;plot(filtered_data)
-        % Feat extration with windows 
+        clear data2use;
         
-%         wininc = floor(0.05*SF2use); 
         n_win = floor((length(data_filtered) - n_winsize)/n_wininc)+1;
-        temp_feat = zeros(n_win,n_feat); idx_trg_as_window = zeros(n_win,1);
+        temp_win = cell(n_win,1); idx_trg_as_window = zeros(n_win,1);
         st = 1;
         en = n_winsize;
         for i = 1: n_win
             idx_trg_as_window(i) = en;
             curr_win = data_filtered(st:en,:);
-            temp_rms = sqrt(mean(curr_win.^2));
-            temp_CC = featCC(curr_win,n_ch);
-            temp_WL = sum(abs(diff(curr_win,2)));
-            temp_SampEN = SamplEN(curr_win,2);
-%             temp_feat(i,:) = [temp_CC,temp_rms,temp_SampEN,temp_WL];
-            temp_feat(i,:) = [temp_rms,temp_WL,temp_SampEN,temp_CC];
+            temp_win{i} = curr_win';
             % moving widnow
             st = st + n_wininc;
             en = en + n_wininc;                 
-        end
-        clear temp_rms temp_CC temp_WL temp_SampEN st en
-        feat_seq{i_trl,i_sub}  = temp_feat;
+        end        
+        win_seq{i_trl,i_sub}  = temp_win;
  
         % cutting trigger 
         idx_trg_start = zeros(n_fe,1);
@@ -173,42 +163,20 @@ for i_sub= 1 : n_sub
         
         idx_fe_seq{i_trl,i_sub} = [idx_seq_FE,idx_trg_start];
         
-        % To confirm the informaion of trrigers were collected right
-        hf =figure(i_sub);
-        hf.Position = [1921 41 1920 962];
-        subplot(n_trl,1,i_trl);
-        tmp_plot = temp_feat(1:end,1:4);
-        plot(tmp_plot)
-        v_min = min(min(tmp_plot(100:end,:)));
-        v_max = max(max(tmp_plot(100:end,:)));
-        hold on;
-        stem(idx_trg_start,repmat(v_min,[n_fe,1]),'k');
-        stem(idx_trg_start,repmat(v_max,[n_fe,1]),'k');
-        ylim([v_min v_max]);
-        drawnow;
-        
        % Get Feature sets(preprocessed DB)
        % [n_seg,n_feat,n_fe,n_trl,n_sub,n_comb]
 %         temp = [];
         for i_emo_orer_in_this_exp = 1 : n_fe
-            feat_seg(:,:,idx_seq_FE(i_emo_orer_in_this_exp),i_trl,i_sub) = ...
-                        temp_feat(idx_trg_start(i_emo_orer_in_this_exp):...
+            win_seg{i_trl,i_sub,idx_seq_FE(i_emo_orer_in_this_exp)} = ...
+                        temp_win(idx_trg_start(i_emo_orer_in_this_exp):...
                         idx_trg_start(i_emo_orer_in_this_exp)+floor((period_FE*fp.SF2use)/n_wininc)-1 ,:);
-                    
-%             temp = [temp;temp_feat(idx_trg_start(i_emo_orer_in_this_exp):...
-%                         idx_trg_start(i_emo_orer_in_this_exp)+floor((period_FE*fp.SF2use)/n_wininc)-1 ,:)];
         end 
         
     end  
-    % plot the DB 
-    c = getframe(hf);
-    savefig(hf,fullfile(path_save,[name_sub{i_sub},'.fig']));
-    imwrite(c.cdata,fullfile(path_save,[name_sub{i_sub},'.png']));
-    close(hf);
 end
     % 결과 저장
-    save(fullfile(path_save,['feat_seg_pair_',num2str(i_emg_pair)]),'feat_seg');
-    save(fullfile(path_save,['feat_seq_pair_',num2str(i_emg_pair)]),'feat_seq');
+    save(fullfile(path_save,['win_seg_pair_',num2str(i_emg_pair)]),'win_seg');
+    save(fullfile(path_save,['win_seq_pair_',num2str(i_emg_pair)]),'win_seq');
 end
 
 
