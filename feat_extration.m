@@ -15,7 +15,8 @@ name_DB_raw = 'DB_raw2';
 name_DB_process = 'DB_processed2';
 
 % decide number of segments in 3-sec long EMG data
-period_wininc = 0.1; % s
+t_wininc = 0.05; % s
+t_winsize = 0.128;
 
 %-------------------------------------------------------------------------%
 
@@ -64,9 +65,10 @@ n_ch = 4;
 idx_pair_right = [1,2;1,3;2,3]; %% 오른쪽 전극 조합
 idx_pair_left = [10,9;10,8;9,8]; %% 왼쪽 전극 조합
 period_FE = 3; % 3-sec
-n_seg = period_FE/period_wininc; % choose 30 or 60
-n_wininc = floor(period_wininc*fp.SF2use); 
-n_winsize = floor(period_wininc*fp.SF2use); % win
+period_post_FE = 1;
+n_seg = (period_FE+period_post_FE)/t_wininc; % choose 30 or 60
+n_wininc = floor(t_wininc*fp.SF2use); 
+n_winsize = floor(t_winsize*fp.SF2use); % win
 
 % subplot 그림 꽉 차게 출력 관련 
 id_subplot_make_it_tight = true; subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.05], [0.1 0.01], [0.1 0.01]);
@@ -193,7 +195,8 @@ for i_sub= 1 : n_sub
         for i_emo_orer_in_this_exp = 1 : n_fe
             feat_seg(:,:,idx_seq_FE(i_emo_orer_in_this_exp),i_trl,i_sub) = ...
                         temp_feat(idx_trg_start(i_emo_orer_in_this_exp):...
-                        idx_trg_start(i_emo_orer_in_this_exp)+floor((period_FE*fp.SF2use)/n_wininc)-1 ,:);
+                        idx_trg_start(i_emo_orer_in_this_exp)...
+                        +floor(((period_FE+period_post_FE)*fp.SF2use)/n_wininc)-1 ,:);
                     
 %             temp = [temp;temp_feat(idx_trg_start(i_emo_orer_in_this_exp):...
 %                         idx_trg_start(i_emo_orer_in_this_exp)+floor((period_FE*fp.SF2use)/n_wininc)-1 ,:)];
@@ -209,6 +212,7 @@ end
     % 결과 저장
     save(fullfile(path_save,['feat_seg_pair_',num2str(i_emg_pair)]),'feat_seg');
     save(fullfile(path_save,['feat_seq_pair_',num2str(i_emg_pair)]),'feat_seq');
+    save(fullfile(path_save,['idx_fe_seq_pair_',num2str(i_emg_pair)]),'idx_fe_seq');
 end
 
 

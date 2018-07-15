@@ -12,13 +12,13 @@ clc; close all; clear all;
 
 %-----------------------Code anlaysis parmaters---------------------------%
 % name of raw DB
-name_DB_raw = 'DB_raw2';
+name.DB_raw = 'DB_raw2';
 
 % name of process DB to analyze in this code
-name_DB_process = 'DB_processed2';
+name.DB_process = 'DB_processed2';
 
 % load feature set, which was extracted by feat_extration.m
-name_DB_analy = 'feat_set_DB_raw2_n_sub_57_n_seg_30_n_wininc_204_winsize_204';
+name.DB_analy = 'feat_set_DB_raw2_n_sub_41_n_seg_60_n_wininc_102_winsize_262';
 
 % decide if validation datbase set
 id_DB_val = 'myoexp2'; % myoexp1, myoexp2, both
@@ -30,300 +30,233 @@ n_transforemd = 0;
 id_use_emg_onset_feat = 0;
 
 % decide which attibute to be compared when applying train-less algoritm
-% [n_seg:30, n_feat:28, n_fe:8, n_trl:20, n_sub:30]
 % 'all' : [:,:,:,:,:], 'Only_Seg' : [i_seg,:,:,:,:], 'Seg_FE' : [i_seg,:,i_FE,:,:]
 id_att_compare = 'Seg_FE'; % 'all', 'Only_Seg', 'Seg_FE'
 %-------------------------------------------------------------------------%
 
 %-------------set paths in compliance with Cha's code structure-----------%
 % path of research, which contains toolbox
-path_research = fileparts(fileparts(fileparts(fullfile(cd))));
+path.research = fileparts(fileparts(fileparts(fullfile(cd))));
 
 % path of code, which
-path_code = fileparts(fullfile(cd));
-path_DB = fullfile(path_code,'DB');
-path_DB_raw = fullfile(path_DB,name_DB_raw);
-path_DB_process = fullfile(path_DB,name_DB_process);
-path_DB_analy = fullfile(path_DB_process,name_DB_analy);
+path.code = fileparts(fullfile(cd));
+path.DB = fullfile(path.code,'DB');
+path.DB_raw = fullfile(path.DB,name.DB_raw);
+path.DB_process = fullfile(path.DB,name.DB_process);
+path.DB_analy = fullfile(path.DB_process,name.DB_analy);
 %-------------------------------------------------------------------------%
 
 %-------------------------add functions-----------------------------------%
 % get toolbox
-addpath(genpath(fullfile(path_research,'_toolbox')));
+addpath(genpath(fullfile(path.research,'_toolbox')));
 
 % add functions
 addpath(genpath(fullfile(cd,'functions')));
 %-------------------------------------------------------------------------%
 
 %-----------------------------load DB-------------------------------------%
-% load feature set, from this experiment
-tmp = load(fullfile(path_DB_process,name_DB_analy,'feat_seg_pair_1'));
-tmp_name = fieldnames(tmp);
-feat = getfield(tmp,tmp_name{1}); %#ok<GFLD>
-
-tmp = load(fullfile(path_DB_process,name_DB_analy,'feat_seq_pair_1'));
-tmp_name = fieldnames(tmp);
-feat_test = getfield(tmp,tmp_name{1}); %#ok<GFLD>
-
-% check if there are feat from other experiment and if thre is, concatinate
-if exist('feat_DB','var')
-feat = cat(5,feat,feat_DB);
-end
-
-
 % LOAD MODEL of EMG ONSET DETECTION
-load(fullfile(path_DB_process,'model_tree_emg_onset.mat'));
+load(fullfile(path.DB_process,'model_tree_emg_onset.mat'));
 %-------------------------------------------------------------------------%
 
 %-----------------------experiment information----------------------------%
 % trigger singals corresponding to each facial expression(emotion)
-% name_fe = ["angry";...
-%     "clench";"contemptous left";"contemptous right";...
-%     "nose wrinkled";"fear";"happy";...
-%     "kiss";"neutral";"sad";...
-%     "surprised"];
-name_fe = {'eye_brow_down-lip_tighten';'neutral-clench';...
+name.emo = {'angry','clench',...
+'lip_corner_up_left','lip_corner_up_right',...
+'lip_corner_up_both','fear',...
+'happy','kiss','neutral',...
+'sad','surprised'};
+
+name.fe = {'eye_brow_down-lip_tighten';'neutral-clench';...
 'neutral-lip_corner_up_left';'neutral-lip_corner_up_right';...
-'eye_brow_down-lip_corner_up_both';'eye_brow_sad-lip_stretch_down';...
+'neutral-lip_corner_up_both';'eye_brow_sad-lip_stretch_down';...
 'eye_brow_happy-lip_happy';'neutral-kiss';'neutral-neutral';...
 'eye_brow_sad-lip_sulky';'eye_brow_up-lip_open'};
 
 % get name list of subjects
-[name_subject,~] = read_names_of_file_in_folder(path_DB_raw);
+[name.subject,~] = read_names_of_file_in_folder(path.DB_raw);
 
 % mapped avartar gesture of each facial part of each emotion
-for i = 1 : length(name_fe)
-tmp = strsplit(name_fe{i},'-');
-name_gesture_c1{1}{i,1} = tmp{1};
-name_gesture_c1{2}{i,1} = tmp{2};
+for i = 1 : length(name.fe)
+tmp = strsplit(name.fe{i},'-');
+name.gesture_c1{1}{i,1} = tmp{1};
+name.gesture_c1{2}{i,1} = tmp{2};
 end
 
 
 % name of types of features
-name_feat = {'RMS';'WL';'SampEN';'CC'};
-% correct_label
-% fe_target.angry = [1,1;1,2;1,6;1,9;1,10;1,11;9,1;2,1;3,1;4,1;8,1;2,1;3,1;4,1;8,1];
-% fe_target.clench = [9,2;2,2;3,2;4,2;8,2];
-% fe_target.contempt = [9,3;9,4;2,3;2,4;3,3;3,4;4,3;4,4;8,3;8,4];
-% fe_target.frown = [1,5];
-% fe_target.fear_sad = [6,1;6,2;6,6;6,9;6,10;6,11;10,1;10,2;10,6;10,9;10,10;10,11;9,6;9,10;2,6;2,10;3,6;3,10;4,6;4,10;8,6;8,10];
-% fe_target.happy = [7,5;7,7;9,5;2,5;3,5;4,5;8,5;2,5;3,5;4,5;5,5];
-% fe_target.kiss = [9,8;2,8;3,8;4,8;8,8];
-% fe_target.neutral = [9,9;2,9;3,9;4,9;8,9];
-% fe_target.surprised = [11,9;11,11;9,11;2,11;3,11;4,11;8,11];
-%
-% name_target = fieldnames(fe_target);
-% fe_target = struct2cell(fe_target);
-% n_target = length(fe_target);
-
-%=============numeber of variables
-[n_seg, n_feat, n_fe, n_trl, n_sub , n_emg_pair] = size(feat);
-n_part =2;
-n_cf = 2;
-n_emg_pair = 1;
-n_sub_compared = n_sub - 1;
-n_ftype = length(name_feat);
-n_bip_ch = 4;
-n_fe_cf = {6,8};
-%=============indices of variables
-idx_sub = 1 : n_sub;
-idx_sub_exp1 = idx_sub(end-15:end);
-idx_sub_exp2 = find(countmember(idx_sub,idx_sub_exp1)==0==1);
-switch id_DB_val
-case 'myoexp1'
-idx_sub_val = idx_sub_exp1;
-case 'myoexp2'
-idx_sub_val = idx_sub_exp2;
-case 'both'
-idx_sub_val = idx_sub;
-end
-n_sub_val = length(idx_sub_val);
-idx_trl = 1 : n_trl;
-idx_feat = {[1,2,3,4];[5,6,7,8];[9,10,11,12];13:28};
-% idx_ch_fe2classfy = {[2,6,10,14,18,22,26,3,7,11,15,19,23,27],...
-%     [1,5,9,13,17,21,25,4,8,12,16,20,24,28]};
-idx_ch_fe2classfy = {[2,6,10,14,18,22,26,3,7,11,15,19,23,27],...
-[1,5,9,13,17,21,25,4,8,12,16,20,24,28,]};
-if (id_use_emg_onset_feat)
-idx_ch_fe2classfy{1} = [idx_ch_fe2classfy{1},31:34];
-idx_ch_fe2classfy{2} = [idx_ch_fe2classfy{2},29:30,35:36];
-end
-idx_emg_onest = [0,1];
-idx_ch_face_parts = {[2,3],[1,4]};
-
-for i_part = 1 : n_part
-[name_gesture_c2{i_part},~,label_gesture{i_part}] = unique(name_gesture_c1{i_part});
-n_class(i_part) = length(name_gesture_c2{i_part});
-end
-name_gesture = [name_gesture_c1',name_gesture_c2'];
-
-% check numeber of subject from DB processed and DB raw
-if length(name_subject) ~= n_sub
-error('please first do analysis of raw DB')
-end
+name.feat = {'RMS';'WL';'SampEN';'CC'};
 %-------------------------------------------------------------------------%
 
 %----------------------set saving folder----------------------------------%
 % set folder for saving
-name_folder_saving = [id_att_compare,'_',id_DB_val,'_',num2str(n_transforemd)];
+name.folder_saving = [id_att_compare,'_',id_DB_val,'_',num2str(n_transforemd)];
 
 % set saving folder for windows
-path_saving = make_path_n_retrun_the_path(path_DB_analy,name_folder_saving);
+path_saving = make_path_n_retrun_the_path(path.DB_analy,name.folder_saving);
 %-------------------------------------------------------------------------%
 
-%----------------------memory allocation for results----------------------%
-% memory allocatoin for accurucies
-r.acc = NaN(n_emg_pair,n_sub_val,n_trl,n_transforemd+1,n_seg,(n_trl-1),n_fe,n_cf+1);
-
-% memory allocatoin for output and target
-r.output_n_target = cell(n_emg_pair,n_sub_val,n_trl,n_transforemd+1,n_seg,(n_trl-1),n_fe,n_cf+1);
-% memory allocatoin for output and target
-% r.model= cell(n_emg_pair,n_sub_val,n_trl,n_transforemd+1);
-
-%-------------------------------------------------------------------------%
+%---- number related parameters
+n_emg_pair = 3;
 
 %------------------------------------main---------------------------------%
-
 % get accrucies and output/target (for confusion matrix) with respect to
 % subject, trial, number of segment, FE,
 for i_emg_pair = 1 : n_emg_pair
-for i_sub = idx_sub_val
-%     for i_sub = 10:23
-%         for i_trl = 6
+    
+% load feature set, from this experiment
+load(fullfile(path.DB_process,name.DB_analy,...
+    sprintf('feat_seg_pair_%d',i_emg_pair)));
+
+load(fullfile(path.DB_process,name.DB_analy,...
+    sprintf('feat_seq_pair_%d',i_emg_pair)));
+
+load(fullfile(path.DB_process,name.DB_analy,...
+    sprintf('idx_fe_seq_pair_%d',i_emg_pair)));
+
+%=============numeber of variables
+[n_seg, n_feat, n_fe, n_trl, n_sub] = size(feat_seg);
+idx_plateau_part = 6: n_seg;
+n_plateau = length(idx_plateau_part);
+idx_transition_part = 1:5;
+n_transition = length(idx_transition_part);
+n_emg_pair = 1;
+n_sub_compared = n_sub - 1;
+n_ftype = length(name.feat);
+n_bip_ch = 4;
+
+%=============indices of variables
+idx_sub = 1 : n_sub;
+idx_trl = 1 : n_trl;
+n_trl = 1;
+
+idx_feat = {[1,2,3,4];[5,6,7,8];[9,10,11,12];13:28};
+
+for i_sub = 1 : n_sub
 for i_trl = 1 : n_trl
+    
 %display of subject and trial in progress
 fprintf('i_emg_pair:%d i_sub:%d i_trial:%d\n',i_emg_pair,i_sub,i_trl);
 if n_transforemd>=1
 % memory allocation similarily transformed feature set
 feat_t = cell(n_seg,n_fe);
-for i_seg = 1 : n_seg
-    for i_FE = 1 : n_fe
+for i_seg = idx_plateau_part
+for i_fe = 1 : n_fe
 
-        % memory allocation feature set
-        feat_t{i_seg,i_FE} = cell(1,n_ftype);
+    % memory allocation feature set
+    feat_t{i_seg,i_fe} = cell(1,n_ftype);
 
-        % you should get access to DB of other experiment with each
-        % features
-        for i_FeatName = 1 : n_ftype
+    % you should get access to DB of other experiment with each
+    % features
+    for i_FeatName = 1 : n_ftype
 
-            % number of feature of each type
-            n_feat_type = length(idx_feat{i_FeatName});
+        % number of feature of each type
+        n_feat_type = length(idx_feat{i_FeatName});
 
-            % feat from this experiment
-            feat_ref = feat(i_seg,idx_feat{i_FeatName},i_FE,...
-                i_trl,i_sub,i_emg_pair)';
+        % feat from this experiment
+        xtrain_ref = feat_seg(i_seg,idx_feat{i_FeatName},i_fe,...
+            i_trl,i_sub)';
 
-            %---------feat to be compared from this experiment----%
-            % [n_seg:30, n_feat:28, n_fe:8, n_trl:20, n_sub:30, n_emg_pair:3]
+        %---------feat to be compared from this experiment----%
+        % [n_seg:30, n_feat:28, n_fe:8, n_trl:20, n_sub:30, n_emg_pair:3]
 
-            % compare ohter subject except its own subject
-            idx_sub_DB = find(countmember(idx_sub_val,i_sub)==0==1);
-            n_sub_DB = length(idx_sub_DB);
-            switch id_att_compare
-                case 'all'
-                    feat_compare = feat(:,idx_feat{i_FeatName},...
-                        :,:,idx_sub_DB,i_emg_pair);
+        % compare ohter subject except its own subject
+        idx_sub_DB = find(countmember(idx_sub,i_sub)==0==1);
+        n_sub_DB = length(idx_sub_DB);
+        switch id_att_compare
+            case 'all'
+                feat_compare = feat_seg(end-n_seg+1:end,idx_feat{i_FeatName},...
+                    :,:,idx_sub_DB);
 
-                case 'Only_Seg'
-                    feat_compare = feat(i_seg,idx_feat{i_FeatName},...
-                        :,:,idx_sub_DB,i_emg_pair);
+            case 'Only_Seg'
+                feat_compare = feat_seg(i_seg,idx_feat{i_FeatName},...
+                    :,:,idx_sub_DB);
 
-                case 'Seg_FE'
-                    feat_compare = feat(i_seg,idx_feat{i_FeatName},...
-                        i_FE,:,idx_sub_DB,i_emg_pair);
-            end
-
-            % permutation giving [n_feat, n_fe, n_trl, n_sub ,n_seg]
-            % to bring about formation of [n_feat, others]
-            feat_compare = permute(feat_compare,[2 3 4 5 1]);
-
-            %  size(2):FE, size(5):seg
-            feat_compare = reshape(feat_compare,...
-                [n_feat_type, size(feat_compare,2)*n_trl*n_sub_DB*...
-                size(feat_compare,5)]);
-
-            % get similar features by determined number of
-            % transformed DB
-            feat_t{i_seg,i_FE}{i_FeatName} = ...
-                dtw_search_n_transf(feat_ref, feat_compare, n_transforemd)';
-            %-----------------------------------------------------%
-
+            case 'Seg_FE'
+                feat_compare = feat_seg(i_seg,idx_feat{i_FeatName},...
+                    i_fe,:,idx_sub_DB);
         end
+
+        % permutation giving [n_feat, n_fe, n_trl, n_sub ,n_seg]
+        % to bring about formation of [n_feat, others]
+        feat_compare = permute(feat_compare,[2 3 4 5 1]);
+
+        %  size(2):FE, size(5):seg
+        feat_compare = reshape(feat_compare,...
+            [n_feat_type, size(feat_compare,2)*n_trl*n_sub_DB]);
+
+        % get similar features by determined number of
+        % transformed DB
+        feat_t{i_seg,i_fe}{i_FeatName} = ...
+            dtw_search_n_transf(xtrain_ref, feat_compare, n_transforemd)';
+        %-----------------------------------------------------%
+
     end
 end
-
+end
+feat_t = feat_t(idx_plateau_part,:); 
 % arrange feat transformed and target
 % concatinating features with types
 feat_t = cellfun(@(x) cat(2,x{:}),feat_t,'UniformOutput',false);
 end
 % validate with number of transformed DB
-for n_t = 0:n_transforemd
+for n_t = n_transforemd
 if n_t >= 1
     % get feature-transformed with number you want
-    feat_trans = cellfun(@(x) x(1:n_t,:),feat_t,...
+    xtrain_tf = cellfun(@(x) x(1:n_t,:),feat_t,...
         'UniformOutput',false);
 
     % get size to have target
     size_temp = cell2mat(cellfun(@(x) size(x,1),...
-        feat_trans(:,1),'UniformOutput',false));
+        xtrain_tf(:,1),'UniformOutput',false));
 
     % feature transformed
-    feat_trans = cell2mat(feat_trans(:));
+    xtrain_tf = cell2mat(xtrain_tf(:));
 
     % target for feature transformed
-    target_feat_trans = repmat(1:n_fe,sum(size_temp,1),1);
-    target_feat_trans = target_feat_trans(:);
+    ytrain_tf = repmat(1:n_fe,sum(size_temp,1),1);
+    ytrain_tf = ytrain_tf(:);
 else
-    feat_trans = [];
-    target_feat_trans = [];
+    xtrain_tf = [];
+    ytrain_tf = [];
 end
 
 % feat for anlaysis
-feat_ref = reshape(permute(feat(:,:,:,i_trl,i_sub,i_emg_pair),...
+xtrain_ref = reshape(permute(feat_seg(:,:,:,i_trl,i_sub,i_emg_pair),...
     [1 3 2]),[n_seg*n_fe,n_feat]);
-target_feat_ref = repmat(1:n_fe,n_seg,1);
-target_feat_ref = target_feat_ref(:);
+
+% xtrain_ref = reshape(permute(feat_seg(idx_plateau_part,:,:,i_trl,i_sub,i_emg_pair),...
+%     [1 3 2]),[n_plateau*n_fe,n_feat]);
+% xtrain_transition_part = reshape(permute(feat(idx_transition_part,:,:,i_trl,i_sub,i_emg_pair),...
+%     [1 3 2]),[n_transition*n_fe,n_feat]);
+% xtrain_mlp_input = reshape(feat(idx_transition_part,1:4,:,i_trl,i_sub,i_emg_pair),...
+%    [n_transition*4,n_fe])';
+ytrain_ref = repmat(1:n_fe,n_seg,1);
+ytrain_ref = ytrain_ref(:);
 
 %=================PREPARE DB FOR TRAIN====================%
-input_train = cat(1,feat_ref,feat_trans);
-target_train = cat(1,target_feat_ref,target_feat_trans);
+xtrain = cat(1,xtrain_ref,xtrain_tf);
+ytrain = cat(1,ytrain_ref,ytrain_tf);
 %=========================================================%
 
 %=================EMG ONSET FEATURE=======================%
 score  = cell(n_bip_ch,1);
 for i_ch = 1 : n_bip_ch
     [~,score{i_ch}] = predict(model_tree_emg_onset,...
-        input_train(:,i_ch));
+        xtrain(:,i_ch));
 end
 score = cat(2,score{:});
 if (id_use_emg_onset_feat)
-input_train = [input_train,score];
+xtrain = [xtrain,score];
 end
 %=========================================================%
-
 
 %==================TRAIN EACH EMOTION=====================%
 model.emotion = fitcdiscr(...
-    input_train,...
-    target_train);
+    xtrain,...
+    ytrain);
 %=========================================================%
 
-%=================TRAIN FACIAL PARTS======================%
-% get features of determined emotions that you want to classify
-model.parts = cell(n_part,1);
-for i_part = 1 : n_part
-    tmp_target = repmat(label_gesture{i_part}',n_seg,1);
-    tmp_target = tmp_target(:);
-
-    % train
-    model.parts{i_part} = fitcdiscr(...
-        input_train(:,idx_ch_fe2classfy{i_part}),...
-        tmp_target,...
-        'discrimType','pseudoLinear');
-end
-% saving models
-%     r.model{i_emg_pair,i_sub,i_trl,n_t+1} = model;
-%=========================================================%
 
 %================= TEST=====================%
 % get input and targets for test DB
@@ -332,106 +265,153 @@ idx_trl_test = find(idx_trl~=i_trl==1);
 c_t = 0;
 for i_trl_test = idx_trl_test
     c_t = c_t + 1;
-    for i_fe = 1 : n_fe
-        %         for i_fe = [15]
-        % save score(likelihood) in circleque
-        score_matrix_cq{1,1} = circlequeue(n_seg,n_fe);
-        score_matrix_cq{2,1} = circlequeue(n_seg,n_fe);
-        score_matrix_cq{1,2} = circlequeue(n_seg,5);
-        score_matrix_cq{2,2} = circlequeue(n_seg,n_fe);
-
-        for i_seg = 1 : n_seg
-
-            % get feature during real-time
-%             feat_test{i_trl_test,i_sub}
-            f = feat(i_seg,:,i_fe,i_trl_test,i_sub,i_emg_pair);
-
-            %====PASS THE TEST FEATURES TO CLASSFIERS=============%
-            %----EMG ONSET
-            f_onset = f(idx_feat{1});
-            s_ons = cell(n_bip_ch,1);
-            for i_ch = 1 : n_bip_ch
-                [~,s_ons{i_ch}] = ...
-                    predict(model_tree_emg_onset,f_onset(i_ch));
-            end
-            if (id_use_emg_onset_feat)
-                f = [f,cat(2,s_ons{:})];
-            end
-            %=======EMG ONSET FEATURE ADDITION
-
-
-            %----EMOTION CLASSFIER
-            [~,s_emo] = predict(model.emotion,f);
-            score_matrix_cq{1,1}.add(s_emo);
-            score_matrix_cq{2,1}.add(s_emo);
-
-            %----FACE PARTS CLASSFIER
-            for i_part = 1 : n_part
-                [~,s_par] = predict(model.parts{i_part},f(idx_ch_fe2classfy{i_part}));
-                score_matrix_cq{i_part,2}.add(s_par);
-            end
-            %=====================================================%
-
-            score_matrix = NaN(n_part,n_cf);
-            output_matrix = NaN(n_part,n_cf);
-            for i_part = 1 : n_part
-                for i_cf = 1 : n_cf
-                    if i_seg<15
-                        tmp = mean(score_matrix_cq{i_part,i_cf}.getLastN(i_seg),1);
-                    else
-                        tmp = mean(score_matrix_cq{i_part,i_cf}.getLastN(15),1);
-                    end
-                    % get max value
-                    [max_v,max_idx] = get_max_and_idx(tmp);
-
-                    % get socre matrix
-                    score_matrix(i_part,i_cf) = max_v*n_class(i_cf);
-                    output_matrix(i_part,i_cf) = max_idx;
-                end
-            end
-%                 disp(score_matrix);
-%                 disp(output_matrix);
-
-            % output/target facial gesutres
-            %
-            for i_clf_method = 1 : n_cf+1
-            score_matrix_test = score_matrix;
-            output_matrix_test = output_matrix;
-            if any(ismember(1:n_cf,i_clf_method))
-                score_matrix_test(:,1:n_cf~=i_clf_method) = 0;
-                output_matrix_test(:,1:n_cf~=i_clf_method) = 0;
-            end
-
-            % get out and target
-            output = possible_fe_selector(score_matrix_test,output_matrix_test,...
-                 name_gesture,name_gesture_c1,n_part);  % Train 한 표정에서 제한 시켜버림 ( Train 한 표정에서 안나왔을 경우
-            target = {name_gesture_c1{1}{i_fe},name_gesture_c1{2}{i_fe}};
-            
-            % change ouput to number index
-            output_n(1) = find(ismember(name_gesture_c2{1},output{1})==1);
-            output_n(2) = find(ismember(name_gesture_c2{2},output{2})==1);
-            target_n(1) = find(ismember(name_gesture_c2{1},target{1})==1);
-            target_n(2) = find(ismember(name_gesture_c2{2},target{2})==1);
-            
-            % results
-            acc = all([isequal(target_n(1),output_n(1)),isequal(target_n(2),output_n(2))]);
-            output_n_target = [output_n(1),target_n(1),output_n(2),target_n(2)];
-
-
-            % result saving
-            r.acc(i_emg_pair,i_sub,i_trl,n_t+1,i_seg,c_t,i_fe,i_clf_method)...
-                = acc;
-            r.output_n_target{i_emg_pair,i_sub,i_trl,n_t+1,i_seg,c_t,i_fe,i_clf_method}...
-             = output_n_target;
-            end
-
-        end
+    xtest = feat_test{i_trl_test,i_sub};
+    target_inform = idx_fe_seq{i_trl_test,i_sub};
+     %====PASS THE TEST FEATURES TO CLASSFIERS=============%
+    %----EMG ONSET
+    xtest_rms = xtest(:,idx_feat{1});
+    
+    s_ons = cell(n_bip_ch,1);
+    for i_ch = 1 : n_bip_ch
+        [~,s_ons{i_ch}] = ...
+            predict(model_tree_emg_onset,xtest_rms(:,i_ch));
     end
+    %=======EMG ONSET FEATURE ADDITION
+    if (id_use_emg_onset_feat)
+        xtest = [xtest,cat(2,s_ons{:})];
+    end
+            
+    %----EMOTION CLASSFIER
+    [ypred,y_likelihood] = predict(model.emotion,xtest);
+    
+    
+    % conditoinal voting
+    % condition #1
+    template_c1 = logical([1 1 1 1 1]);
+    n_c1 = length(template_c1);
+    % condition #2
+    template_c2 = logical([1 1 0 1 1]);
+    n_c2 = length(template_c2);
+    % condition #3
+    template_c3 = logical([1 1 1 0 0 0 0 0 0 0 0 0 1]);
+    n_c3 = length(template_c3);
+    % condition #4
+    template_c4 = logical([1 1 0 1 1 0 0 0 0 0 0 0 1]);
+    n_c4 = length(template_c4);
+    
+    c1_fail = 0;
+    c2_fail = 0;
+    count = 0;
+    y_corrected = NaN(length(ypred),1);
+    activated = 0;
+    for i = 1 : length(ypred)
+        if i < n_c1
+            continue;
+        end
+        tmp_d = ypred(i-n_c1+1:i);
+        
+        conditonal_voting;
+        
+        % condition #1
+        tmp = tmp_d(template_c1);
+        if ~range(tmp) % check all values are same
+             y_corrected(i) = ypred(i);
+             c1_fail = 0;
+        else
+            c1_fail = 1;
+        end
+        
+%         % condition #2
+%         tmp = tmp_d(template_c2);
+%         if ~range(tmp) % check all values are same
+%              y_corrected(i) = ypred(i);
+%              c2_fail =0;
+%         else
+%             c2_fail = 1;
+%         end
+%         
+        if c1_fail
+            y_corrected(i) = y_corrected(i-1);
+        end
+        
+%         if i < n_c3
+%             continue;
+%         end
+%         
+%         % condition #3
+%         tmp_d = ypred(i-n_c3+1:i);
+%         tmp = tmp_d(template_c3);
+%         if ~range(tmp(1:3))&&tmp(4)==9&&tmp(1)~=9 % check all values are same
+%              y_corrected(i) = ypred(i);
+%              c3_fail = 0;
+%              activated = 1;
+%         else
+%             c3_fail = 1;
+%         end
+%         
+%         if activated
+%             count = count + 1;
+%         end
+%         if count > 0 && count <=10
+%              y_corrected(i) = 9;
+%         end
+%         if count == 10
+%             count = 0;
+%             activated = 0;
+%         end
+    end
+    
+    
+    %- answer data
+    len_test = length(xtest);
+    ytest = NaN(len_test,1);
+    tmp = [target_inform(:,2) ,target_inform(:,2) + 30-1];
+    for i_fe = 1 : n_fe
+        ytest(linspace(tmp(i_fe,1),tmp(i_fe,2),30)) =  target_inform(i_fe,1);
+    end
+    
+    figure;
+    hold on;
+%     plot(ypred);
+    plot(y_corrected);
+    plot(ytest,'r','LineWidth',3);
+    set(gca,'YTickLabel',strrep(name.emo,'_',' '))
+
+    %=====================================================%
+    
+    %- simple majority voting
+    mv_size = 10;
+    ypred_mv = NaN(length(ypred)-mv_size+1,1);
+    count = 0;
+    while count < length(ypred)
+        count = count + 1;
+        if count<15 % get rid of filtering effect
+            continue;
+        end
+%         xtest_ti = [xtest(count - n_transition+1:count,1:4),llhood(count - n_transition+1:count)];
+%         net(xtest_ti')
+%         abs(tmp)^(alpha*ypred(count))
+        
+        class_counts = countmember(1:n_fe,ypred(count-mv_size+1:count));
+        [max_v,max_idx] = get_max_and_idx(class_counts);
+        ypred_mv(count) = max_idx;
+    end
+    ypred_mv = [NaN(mv_size-1,1);ypred_mv];
+    
+    figure;
+    hold on;
+    plot(ypred_mv);
+    plot(ytest,'r','LineWidth',3);
+    set(gca,'YTickLabel',strrep(name.emo,'_',' '))
+    
+    a = 1;
+end      
+
 end
 end
 end
 end
-end
+
 %-----------------^--------------------------------------------------------%
 
 %-------------------------preprocessing of results------------------------%
@@ -439,12 +419,12 @@ end
 %-------------------------------------------------------------------------%
 
 %-------------------------------save results------------------------------%
-name_saving = sprintf('DB-%s_ntrans-%d_onset-%d-compmethod-%s',...
+name.saving = sprintf('DB-%s_ntrans-%d_onset-%d-compmethod-%s',...
 id_DB_val,n_transforemd,id_use_emg_onset_feat,id_att_compare);
 
-save(fullfile(path_saving,name_saving),'r');
+save(fullfile(path_saving,name.saving),'r');
 
-load(fullfile(path_saving,name_saving));
+load(fullfile(path_saving,name.saving));
 %-------------------------------------------------------------------------%
 
 %==============================부위별 분류 결과============================%
@@ -456,15 +436,15 @@ tmp1 = cat(1,tmp1{:});
 
 
 for i_part = 1 : n_part
-% name_neutral = {'neutral','neutral'};
-n_fe_result = length(name_gesture_c1{i_part});
+% name.neutral = {'neutral','neutral'};
+n_fe_result = length(name.gesture_c1{i_part});
 output = strcat(tmp1(:,i_part));
 target = strcat(tmp1(:,i_part+2));
 
 
 
-% name_fe_eye = {'neutral';'eye_brow_down';'eye_brow_happy';'eye_brow_sad'};
-[~,tmp]  = ismember(output,name_gesture{i_part,2});
+% name.fe_eye = {'neutral';'eye_brow_down';'eye_brow_happy';'eye_brow_sad'};
+[~,tmp]  = ismember(output,name.gesture{i_part,2});
 idx2delete = find(tmp==0);
 tmp(idx2delete) =[];
 
@@ -473,7 +453,7 @@ out = [B,histc(tmp,B)];
 
 output_tmp = full(ind2vec(tmp',n_fe_result));
 
-[~,tmp]  = ismember(target,name_gesture{i_part,2});
+[~,tmp]  = ismember(target,name.gesture{i_part,2});
 tmp(idx2delete) =[];
 target_tmp = full(ind2vec(tmp',n_fe_result));
 
@@ -485,12 +465,12 @@ confusion(target_tmp,output_tmp);
 
 figure;
 h = plotconfusion(target_tmp,output_tmp);
-name_conf = strrep(name_gesture{i_part,2},'_',' ');
+name.conf = strrep(name.gesture{i_part,2},'_',' ');
 
-h.Children(2).XTickLabel(1:n_fe_result) = name_conf;
-h.Children(2).YTickLabel(1:n_fe_result)  = name_conf;
+h.Children(2).XTickLabel(1:n_fe_result) = name.conf;
+h.Children(2).YTickLabel(1:n_fe_result)  = name.conf;
 
-% plotConfMat(mat_conf', name_conf)
+% plotConfMat(mat_conf', name.conf)
 end
 %=========================================================================%
 

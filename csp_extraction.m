@@ -15,7 +15,8 @@ name_DB_raw = 'DB_raw2';
 name_DB_process = 'DB_processed2';
 
 % decide number of segments in 3-sec long EMG data
-period_wininc = 0.1; % s
+t_winsize = 0.2; % s
+t_wininc = 0.05; % s
 
 %-------------------------------------------------------------------------%
 
@@ -37,10 +38,10 @@ addpath(genpath(fullfile(cd,'functions')));
 name_trg = {"화남",1;"어금니깨물기",2;"비웃음(왼쪽)",3;"비웃음(오른쪽)",4;...
     "눈 세게 감기",5;"두려움",6;"행복",7;"키스",8;"무표정",9;"슬픔",10;"놀람",11};
 
-name_FE = name_trg(:,1);
+name_fe = name_trg(:,1);
 idx_trg = cell2mat(name_trg(:,2));
 clear Name_Trg;
-n_fe = length(name_FE);% Number of facial expression
+n_fe = length(name_fe);% Number of facial expression
 n_trl = 20; % Number of Trials
 %-------------------------------------------------------------------------%
 
@@ -64,9 +65,9 @@ n_ch = 4;
 idx_pair_right = [1,2;1,3;2,3]; %% 오른쪽 전극 조합
 idx_pair_left = [10,9;10,8;9,8]; %% 왼쪽 전극 조합
 period_FE = 3; % 3-sec
-n_seg = period_FE/period_wininc; % choose 30 or 60
-n_wininc = floor(period_wininc*fp.SF2use); 
-n_winsize = floor(period_wininc*fp.SF2use); % win
+n_seg = period_FE/t_wininc; % choose 30 or 60
+n_wininc = floor(t_wininc*fp.SF2use); 
+n_winsize = floor(t_winsize*fp.SF2use); % win
 
 % subplot 그림 꽉 차게 출력 관련 
 id_subplot_make_it_tight = true; subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.05], [0.1 0.01], [0.1 0.01]);
@@ -79,12 +80,13 @@ name_folder4saving = sprintf(...
     name_DB_raw,n_sub,n_seg,n_wininc,n_winsize);
 path_save = make_path_n_retrun_the_path(fullfile(path_DB_process),...
     name_folder4saving);
+path_save = make_path_n_retrun_the_path(path_save,...
+    'DB_win');
 %-------------------------------------------------------------------------%
 
 
 % memory alloation
-win_seg = cell(n_trl,n_sub,n_fe);
-win_seq = cell(n_trl,n_sub);
+xtrain = cell(n_fe,1);
 idx_fe_seq = cell(n_trl,n_sub);
 for i_emg_pair = 1 : n_emg_pair
 for i_sub= 1 : n_sub
@@ -124,11 +126,6 @@ for i_sub= 1 : n_sub
                 continue; 
         end
         
-        
-       
-        % get raw data and bipolar configuration
-%         raw_data = double(OUT.data'); % raw data
-%         temp_chan = cell(1,6);
         % get raw data and bipolar configuration     
         idx2use_emg_pair = ...
             [idx_pair_right(i_emg_pair,:),idx_pair_left(i_emg_pair,:)];
@@ -142,19 +139,23 @@ for i_sub= 1 : n_sub
         clear data2use;
         
         n_win = floor((length(data_filtered) - n_winsize)/n_wininc)+1;
-        temp_win = cell(n_win,1); idx_trg_as_window = zeros(n_win,1);
+        xtest = cell(n_win,1); idx_trg_as_window = zeros(n_win,1);
         st = 1;
         en = n_winsize;
         for i = 1: n_win
             idx_trg_as_window(i) = en;
             curr_win = data_filtered(st:en,:);
-            temp_win{i} = curr_win';
+            xtest{i} = curr_win';
             % moving widnow
             st = st + n_wininc;
             en = en + n_wininc;                 
         end        
-        win_seq{i_trl,i_sub}  = temp_win;
- 
+        
+        % 결과 저장
+        save(fullfile(path_save,...
+            sprintf('xtest_s_%02d_t_%02d_p_%d',i_sub,i_trl,i_emg_pair)),...
+            'xtest');
+
         % cutting trigger 
         idx_trg_start = zeros(n_fe,1);
         for i_emo_orer_in_this_exp = 1 : n_fe
@@ -164,19 +165,20 @@ for i_sub= 1 : n_sub
         idx_fe_seq{i_trl,i_sub} = [idx_seq_FE,idx_trg_start];
         
        % Get Feature sets(preprocessed DB)
-       % [n_seg,n_feat,n_fe,n_trl,n_sub,n_comb]
-%         temp = [];
         for i_emo_orer_in_this_exp = 1 : n_fe
-            win_seg{i_trl,i_sub,idx_seq_FE(i_emo_orer_in_this_exp)} = ...
-                        temp_win(idx_trg_start(i_emo_orer_in_this_exp):...
-                        idx_trg_start(i_emo_orer_in_this_exp)+floor((period_FE*fp.SF2use)/n_wininc)-1 ,:);
+            xtrain{idx_seq_FE(i_emo_orer_in_this_exp)} = ...
+           xtest(idx_trg_start(i_emo_orer_in_this_exp)+...
+            floor(1*fp.SF2use/n_wininc):...
+            idx_trg_start(i_emo_orer_in_this_exp)+...
+            floor(period_FE*fp.SF2use/n_wininc)-1 ,:);
         end 
-        
+        % 결과 저장
+        save(fullfile(path_save,...
+            sprintf('xtrain_s_%02d_t_%02d_p_%d',i_sub,i_trl,i_emg_pair)),...
+            'xtrain');
     end  
 end
-    % 결과 저장
-    save(fullfile(path_save,['win_seg_pair_',num2str(i_emg_pair)]),'win_seg');
-    save(fullfile(path_save,['win_seq_pair_',num2str(i_emg_pair)]),'win_seq');
+save(fullfile(path_save,['idx_fe_seq_pair_',num2str(i_emg_pair)]),'idx_fe_seq');
 end
 
 
